@@ -8,6 +8,8 @@ se <- function(x) sqrt(var(x) / length(x))
 
 filter_nas <- function(x) x[!is.na(x) & x != ""]
 
+likelihoods <- c("Extremely likely", "Somewhat likely", "Somewhat unlikely", "Extremely unlikely")
+
 # Basic bar chart of whether students are enrolling
 ggplot(data=subset(df, (!is.na(enroll) & enroll != "")), aes(x=factor(enroll))) + 
   geom_bar(aes(fill = factor(enroll))) + 
@@ -24,11 +26,21 @@ ggplot(data=subset(df, (!is.na(enroll) & enroll != "")), aes(x=factor(enroll))) 
 grid::grid.raster(logo, x = 0.01, y = 0.01, just = c('left', 'bottom'), width = unit(1.5, 'cm'))
 
 # Students enrolling by class year
-## X axis as class year and fill as enrollment or other way around?
+## would someone like to take a shot at labeling this?
+ggplot(data=subset(df, (!is.na(enroll) & enroll != "" & year != "Other" & year != "" & !is.na(year))), aes(x=factor(year))) + 
+  geom_bar(aes(fill = factor(enroll, levels = likelihoods), y = ..count../tapply(..count.., ..x.. ,sum)[..x..])) + 
+  scale_x_discrete(labels = function(x) str_wrap(x, width = 10)) + 
+  scale_fill_manual(values = primary) +
+  theme_hodp() + 
+  xlab("Class Year") + 
+  ylab("Proportion returning") + 
+  labs(title="Students returning by year", fill = "Class Year")
+grid::grid.raster(logo, x = 0.01, y = 0.01, just = c('left', 'bottom'), width = unit(1.5, 'cm'))
+
 
 # Predicted overall enrollment density
 ggplot(data=subset(df, !is.na(df$enroll_percent_1)), aes(x = enroll_percent_1, color = primary[1])) +
-  geom_density(bw=5, alpha=0.25, fill=primary[1]) + 
+  geom_density(bw=6, alpha=0.25, fill=primary[1], size = 2) + 
   geom_vline(aes(xintercept=mean(enroll_percent_1)),
              color=primary[4], linetype = "dashed", size=1) +
   ylab("Density") + 
@@ -45,8 +57,6 @@ ggplot(data=subset(df, year != "Other" & year != "" & !is.na(enroll_percent_1)),
   xlab("Predicted enrollment in same class") + 
   labs(title="Predicted enrollment by class", color = "Year") +
   theme_hodp()
-
-likelihoods <- c("Extremely likely", "Somewhat likely", "Somewhat unlikely", "Extremely unlikely")
 
 enroll_means_df <- data.frame(
   "enroll_label"=factor(likelihoods),
@@ -90,5 +100,51 @@ ggplot(data=enroll_means_df, aes(x=enroll_label, y=enroll_mean_2)) +
   theme_hodp() +
   theme(legend.position = "none")
 grid::grid.raster(logo, x = 0.01, y = 0.01, just = c('left', 'bottom'), width = unit(1.5, 'cm'))
+
+# Categories satisfied
+criteria_labels <- c(
+  "Lack of good computer",
+  "Internet speed below 5 Mbps",
+  "Lack of a quiet place to work",
+  "Lack of dedicated time to devote to academics",
+  "Living in a distant time zone",
+  "Home circumstances that deeply affect your mental well-being",
+  "Shelter and/or food insecurities",
+  "Need for accessible learning resources on campus not available remotely",
+  "Planned Senior thesis that cannot be done remotely", 
+  "Enrollment in a joint program with another Boston-area institution"
+)
+
+criteria_options <- paste("criteria_", 1:10, sep = "")
+
+criteria_df <-data.frame("criteria" = rep(criteria_options, times=2), 
+                         "satisfied" = c(rep("No", times=length(criteria_options)),
+                                        rep("Yes", times=length(criteria_options))),
+                         "prop" = rep(0, times=2*length(criteria_options)))
+
+for (row in 1:nrow(criteria_df)) {
+  current_criteria <- criteria_df[row, "criteria"]
+  current_satisfied <- criteria_df[row, "satisfied"]
+  v <- df[current_criteria]
+  criteria_df[row, "count"] <- table(v)[current_satisfied]
+  criteria_df[row, "prop"] <- criteria_df[row, "count"] / length(v[!is.na(v) & v != "" & v != "Unsure or prefer not to say"])
+}
+
+ggplot(criteria_df, aes(x=factor(criteria, levels=rev(criteria_options)), y=prop, fill=factor(satisfied, levels=c("No", "Yes", "Unsure or prefer not to say")))) +
+  geom_bar(stat="identity") +
+  xlab('') +
+  ylab('Percent') +
+  ggtitle("Which criteria do students satisfy") +
+  scale_x_discrete(labels=str_wrap(rev(criteria_labels), width=30)) +
+  scale_fill_manual(values=primary[1:2]) +
+  guides(fill = guide_legend(reverse = TRUE)) +
+  coord_flip() +
+  geom_text(aes(label=scales::percent(prop, accuracy=1)), position="stack", hjust=-0.2, size=4) +
+  theme_hodp() +
+  theme(legend.title = element_blank(), 
+       axis.text.y =element_text(size=10,  family="Helvetica"))
+       # plot.title = element_text(size=20,  family="Helvetica", face = "bold", margin = margin(t = 0, r = 0, b = 10, l = 0)))
+
+sum(df$criteria_count==0) / length(df$criteria_count)
 
   
