@@ -259,11 +259,23 @@ ggplot(data=infected_means_df, aes(x=on_campus_label, y=infected_mean)) +
   theme(legend.position = "none")
 grid::grid.raster(logo, x = 0.01, y = 0.01, just = c('left', 'bottom'), width = unit(1.5, 'cm'))
 
+# Percent of students on-campus
+ggplot(data=subset(df, !is.na(on_campus_percent_1)), aes(x = on_campus_percent_1, color = primary[1])) +
+  geom_density(bw=6, alpha=0.25, fill=primary[1], size = 2) + 
+  geom_vline(aes(xintercept=mean(on_campus_percent_1)),
+             color=primary[4], linetype = "dashed", size=1) +
+  ylab("Density") + 
+  xlab("Predicted proportion of enrolled students on-campus") + 
+  labs(title="What proportion of enrolled students will be on-campus?", subtitle=paste("Mean=", round(mean(df$on_campus_percent_1, na.rm=T), 1), 
+                                                                                       ", Median=", round(median(df$on_campus_percent_1, na.rm=T), 1), collapse=""))  +
+  theme_hodp() +
+  theme(legend.position = "none")
+
 #############################
 #### EVALUATING POLICIES ####
 #############################
 ggplot(data=subset(df, !is.na(df$percent_infected_1)), aes(x = percent_infected_1, color = primary[1])) +
-  geom_density(bw=8, alpha=0.25, fill=primary[1], size = 2) + 
+  geom_density(bw=6, alpha=0.25, fill=primary[1], size = 2) + 
   geom_vline(aes(xintercept=mean(percent_infected_1)),
              color=primary[4], linetype = "dashed", size=1) +
   ylab("Density") + 
