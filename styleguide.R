@@ -9,7 +9,7 @@ logo <- image_read("logo.png")
 # Legend: https://stackoverflow.com/questions/14622421/how-to-change-legend-title-in-ggplot
 
 monochrome <- c('#760000', '#BE1E26', '#D84742', '#FF6B61', '#FF9586')
-primary <- c('#EE3838', '#FA9E1C', '#78C4D4', '#4B5973', '#E2DDDB')
+primary <- c('#EE3838', '#FA9E1C', '#78C4D4', '#4B5973', '#E2DDDB', '#cb2a29')
 sidebysidebarplot <- c("#ef3e3e", "#2c3e50")
 theme_hodp <- function () { 
   theme_classic(base_size=12, base_family="Helvetica") %+replace%

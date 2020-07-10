@@ -10,6 +10,10 @@ filter_nas <- function(x) x[!is.na(x) & x != ""]
 
 likelihoods <- c("Extremely likely", "Somewhat likely", "Somewhat unlikely", "Extremely unlikely")
 
+####################
+#### ENROLLMENT ####
+####################
+
 # Basic bar chart of whether students are enrolling
 ggplot(data=subset(df, (!is.na(enroll) & enroll != "")), aes(x=factor(enroll))) + 
   geom_bar(aes(fill = factor(enroll))) + 
@@ -101,6 +105,57 @@ ggplot(data=enroll_means_df, aes(x=enroll_label, y=enroll_mean_2)) +
   theme(legend.position = "none")
 grid::grid.raster(logo, x = 0.01, y = 0.01, just = c('left', 'bottom'), width = unit(1.5, 'cm'))
 
+# How many semesters will people take off
+ggplot(data=subset(df, (!is.na(semesters_off) & semesters_off != "")), aes(x=factor(semesters_off))) + 
+  geom_bar(aes(fill = factor(semesters_off))) + 
+  scale_fill_manual(values = primary) + 
+  scale_x_discrete(labels = str_wrap(c("Fall only", "Fall, maybe Spring", "Fall and Spring", "Longer"), width = 20),
+                   limits = c("Fall only", "Fall, and maybe Spring depending on policy", "Fall and Spring", "Longer")) +
+  geom_text(stat='count', aes(label=percent((..count..)/sum((..count..)))), vjust=-1) +
+  ylim(c(0, 300)) + 
+  xlab("Semesters off") + 
+  ylab("Count") + 
+  labs(title="How many semesters off?") +
+  theme_hodp() +
+  theme(legend.position = "none")
+grid::grid.raster(logo, x = 0.01, y = 0.01, just = c('left', 'bottom'), width = unit(1.5, 'cm'))
+
+# What are people doing?
+ggplot(data=subset(df, (!is.na(semester_off_plans) & semester_off_plans != "")), aes(x=factor(semester_off_plans))) + 
+  geom_bar(aes(fill = factor(semester_off_plans))) + 
+  scale_fill_manual(values = c(primary[5], primary[1], primary[6], primary[2], primary[4], primary[3])) + 
+  scale_x_discrete(labels = function(x) str_wrap(x, width = 10), 
+                   limits = c("Internship/Industry Work", "Research", "Volunteering", "Travel", "Chill at home", "Other")) +
+  geom_text(stat='count', aes(label=percent((..count..)/sum((..count..)))), vjust=-1) +
+  ylim(c(0, 350)) + 
+  xlab("Plan") + 
+  ylab("Count") + 
+  labs(title="What would students do during semester off?") +
+  theme_hodp() +
+  theme(legend.position = "none")
+grid::grid.raster(logo, x = 0.01, y = 0.01, just = c('left', 'bottom'), width = unit(1.5, 'cm'))
+
+
+
+#############################
+#### RETURNING TO CAMPUS ####
+#############################
+
+# Applying to return to campus
+ggplot(data=subset(df, (!is.na(petition) & petition != "")), aes(x=factor(petition))) + 
+  geom_bar(aes(fill = factor(petition))) + 
+  scale_fill_manual(values = c(rev(sidebysidebarplot))) + 
+  scale_x_discrete(labels = function(x) str_wrap(x, width = 10), 
+                   limits = c("Yes", "No")) +
+  geom_text(stat='count', aes(label=percent((..count..)/sum((..count..)))), vjust=-1) +
+  ylim(c(0, 500)) + 
+  xlab("Petitioning") + 
+  ylab("Count") + 
+  labs(title="How many students are petitioning?") +
+  theme_hodp() +
+  theme(legend.position = "none")
+grid::grid.raster(logo, x = 0.01, y = 0.01, just = c('left', 'bottom'), width = unit(1.5, 'cm'))
+
 # Categories satisfied
 criteria_labels <- c(
   "Lack of good computer",
@@ -139,12 +194,14 @@ ggplot(criteria_df, aes(x=factor(criteria, levels=rev(criteria_options)), y=prop
   scale_fill_manual(values=primary[1:2]) +
   guides(fill = guide_legend(reverse = TRUE)) +
   coord_flip() +
-  geom_text(aes(label=scales::percent(prop, accuracy=1)), position="stack", hjust=-0.2, size=4) +
+  geom_text(aes(label=scales::percent(prop, accuracy=1)), position="stack", hjust=1.5, size=4) +
   theme_hodp() +
   theme(legend.title = element_blank(), 
        axis.text.y =element_text(size=10,  family="Helvetica"))
        # plot.title = element_text(size=20,  family="Helvetica", face = "bold", margin = margin(t = 0, r = 0, b = 10, l = 0)))
 
-sum(df$criteria_count==0) / length(df$criteria_count)
+df$criteria_count <- (df$criteria_1 == "Yes") + (df$criteria_2  == "Yes") + (df$criteria_3 == "Yes") + (df$criteria_4 == "Yes") + (df$criteria_5 == "Yes") + 
+                      (df$criteria_6 == "Yes") + (df$criteria_7 == "Yes") + (df$criteria_8 == "Yes") + (df$criteria_9 == "Yes") + (df$criteria_10 == "Yes")
+
 
   
