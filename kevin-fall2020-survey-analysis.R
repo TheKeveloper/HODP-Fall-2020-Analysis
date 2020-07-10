@@ -2,7 +2,7 @@ source('styleguide.R')
 library(stringr)
 library(reshape2)
 
-df <- read.csv("survey-data-20-07-08.csv")
+df <- read.csv("survey-data-20-07-09.csv")
 
 se <- function(x) sqrt(var(x) / length(x))
 
@@ -49,9 +49,11 @@ ggplot(data=subset(df, !is.na(df$enroll_percent_1)), aes(x = enroll_percent_1, c
              color=primary[4], linetype = "dashed", size=1) +
   ylab("Density") + 
   xlab("Predicted overall enrollment") + 
-  labs(title="Predicted overall enrollment", subtitle=paste("Mean=", round(mean(df$enroll_percent_1, na.rm=T), 1)), collapse="") +
+  labs(title="Predicted overall enrollment", subtitle=paste("Mean=", round(mean(df$enroll_percent_1, na.rm=T), 1), 
+                                                            ", Median=", round(median(df$enroll_percent_1, na.rm=T), 1), collapse="")) +
   theme_hodp() +
   theme(legend.position = "none")
+grid::grid.raster(logo, x = 0.01, y = 0.01, just = c('left', 'bottom'), width = unit(1.5, 'cm'))
 
 # Predicted enrollment in same class density
 ggplot(data=subset(df, year != "Other" & year != "" & !is.na(enroll_percent_1)), aes(x = enroll_percent_2, color=year)) +
@@ -124,7 +126,7 @@ grid::grid.raster(logo, x = 0.01, y = 0.01, just = c('left', 'bottom'), width = 
 ggplot(data=subset(df, (!is.na(semester_off_plans) & semester_off_plans != "")), aes(x=factor(semester_off_plans))) + 
   geom_bar(aes(fill = factor(semester_off_plans))) + 
   scale_fill_manual(values = c(primary[5], primary[1], primary[6], primary[2], primary[4], primary[3])) + 
-  scale_x_discrete(labels = function(x) str_wrap(x, width = 10), 
+  scale_x_discrete(labels = function(x) str_wrap(x, width = 20), 
                    limits = c("Internship/Industry Work", "Research", "Volunteering", "Travel", "Chill at home", "Other")) +
   geom_text(stat='count', aes(label=percent((..count..)/sum((..count..)))), vjust=-1) +
   ylim(c(0, 350)) + 
@@ -194,7 +196,7 @@ ggplot(criteria_df, aes(x=factor(criteria, levels=rev(criteria_options)), y=prop
   scale_fill_manual(values=primary[1:2]) +
   guides(fill = guide_legend(reverse = TRUE)) +
   coord_flip() +
-  geom_text(aes(label=scales::percent(prop, accuracy=1)), position="stack", hjust=1.5, size=4) +
+  geom_text(aes(label=scales::percent(prop, accuracy=1)), position="stack", hjust=1, size=4) +
   theme_hodp() +
   theme(legend.title = element_blank(), 
        axis.text.y =element_text(size=10,  family="Helvetica"))
@@ -203,5 +205,72 @@ ggplot(criteria_df, aes(x=factor(criteria, levels=rev(criteria_options)), y=prop
 df$criteria_count <- (df$criteria_1 == "Yes") + (df$criteria_2  == "Yes") + (df$criteria_3 == "Yes") + (df$criteria_4 == "Yes") + (df$criteria_5 == "Yes") + 
                       (df$criteria_6 == "Yes") + (df$criteria_7 == "Yes") + (df$criteria_8 == "Yes") + (df$criteria_9 == "Yes") + (df$criteria_10 == "Yes")
 
+# How llikely allowed to return
+ggplot(data=subset(df, (!is.na(allowed_return) & allowed_return != "")), aes(x=factor(allowed_return))) + 
+  geom_bar(aes(fill = factor(allowed_return))) + 
+  scale_fill_manual(values = c(primary[1], primary[4], primary[2], primary[3])) + 
+  scale_x_discrete(labels = function(x) str_wrap(x, width = 20), 
+                   limits = likelihoods) +
+  geom_text(stat='count', aes(label=percent((..count..)/sum((..count..)))), vjust=-1) +
+  ylim(c(0, 400)) + 
+  xlab("Likelihood allowed on-campus") + 
+  ylab("Count") + 
+  labs(title="How likely are upperclassmen to be allowed on-campus?") +
+  theme_hodp() +
+  theme(legend.position = "none")
+grid::grid.raster(logo, x = 0.01, y = 0.01, just = c('left', 'bottom'), width = unit(1.5, 'cm'))
 
+# How likely to return if allowed
+ggplot(data=subset(df, (!is.na(on_campus) & on_campus != "")), aes(x=factor(on_campus))) + 
+  geom_bar(aes(fill = factor(on_campus))) + 
+  scale_fill_manual(values = c(primary[1], primary[4], primary[2], primary[3])) + 
+  scale_x_discrete(labels = function(x) str_wrap(x, width = 20), 
+                   limits = likelihoods) +
+  geom_text(stat='count', aes(label=percent((..count..)/sum((..count..)))), vjust=-1) +
+  ylim(c(0, 400)) + 
+  xlab("Likelihood to return if allowed") + 
+  ylab("Count") + 
+  labs(title="How likely are students to return if allowed?") +
+  theme_hodp() +
+  theme(legend.position = "none")
+grid::grid.raster(logo, x = 0.01, y = 0.01, just = c('left', 'bottom'), width = unit(1.5, 'cm'))
+
+# Percent infected by likelihood to return
+infected_means_df <- data.frame(
+  "on_campus_label"=factor(likelihoods),
+  "infected_mean"=Vectorize((function(x) mean(filter_nas(df$percent_infected_1[df$on_campus == x]))))(likelihoods),
+  "infected_se"=Vectorize(function(x) se(filter_nas(df$percent_infected_1[df$on_campus == x])))(likelihoods)
+)
+# Mean expected proportion returning overall
+ggplot(data=infected_means_df, aes(x=on_campus_label, y=infected_mean)) + 
+  geom_bar(stat = "identity", aes(fill=on_campus_label)) +
+  scale_fill_manual(values = c(primary[1], primary[4], primary[2], primary[3])) + 
+  scale_x_discrete(labels = function(x) str_wrap(x, width = 20), 
+                   limits = likelihoods) +
+  geom_text(stat='identity', aes(label=percent(infected_mean/100)), vjust=-1, hjust=-0.7) +
+  geom_errorbar(aes(ymin=infected_mean - 1.96 * infected_se, ymax=infected_mean + 1.96 * infected_se),
+                width=.2,                    # Width of the error bars
+                position=position_dodge(.9)) +
+  ylim(c(0, 40)) + 
+  xlab("Likelihood of returning to campus if allowed") + 
+  ylab("Mean predicted proportion on-campus infected") + 
+  labs(title="Return to campus vs predicted proportion infected") +
+  theme_hodp() +
+  theme(legend.position = "none")
+grid::grid.raster(logo, x = 0.01, y = 0.01, just = c('left', 'bottom'), width = unit(1.5, 'cm'))
+
+#############################
+#### EVALUATING POLICIES ####
+#############################
+ggplot(data=subset(df, !is.na(df$percent_infected_1)), aes(x = percent_infected_1, color = primary[1])) +
+  geom_density(bw=8, alpha=0.25, fill=primary[1], size = 2) + 
+  geom_vline(aes(xintercept=mean(percent_infected_1)),
+             color=primary[4], linetype = "dashed", size=1) +
+  ylab("Density") + 
+  xlab("Predicted proportion of students on-campus infected") + 
+  labs(title="What proportion of students on-campus will be infected?", subtitle=paste("Mean=", round(mean(df$percent_infected_1, na.rm=T), 1), 
+                                                                                       ", Median=", round(median(df$percent_infected_1, na.rm=T), 1), collapse=""))  +
+  theme_hodp() +
+  theme(legend.position = "none")
+grid::grid.raster(logo, x = 0.01, y = 0.01, just = c('left', 'bottom'), width = unit(1.5, 'cm'))
   
