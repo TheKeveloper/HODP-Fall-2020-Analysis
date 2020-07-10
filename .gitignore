@@ -37,3 +37,8 @@ vignettes/*.pdf
 
 # R Environment Variables
 .Renviron
+
+# remove this once the data is cleaned
+*.csv
+
+*.png
