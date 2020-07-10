@@ -42,15 +42,18 @@ ggplot(data=subset(df, (!is.na(enroll) & enroll != "" & year != "Other" & year !
 grid::grid.raster(logo, x = 0.01, y = 0.01, just = c('left', 'bottom'), width = unit(1.5, 'cm'))
 
 
+likely_enrolled_prop <- sum(df$enroll == "Extremely likely" | df$enroll == "Somewhat likely") / (sum(df$enroll != ""))
 # Predicted overall enrollment density
 ggplot(data=subset(df, !is.na(df$enroll_percent_1)), aes(x = enroll_percent_1, color = primary[1])) +
   geom_density(bw=6, alpha=0.25, fill=primary[1], size = 2) + 
-  geom_vline(aes(xintercept=mean(enroll_percent_1)),
+  scale_x_continuous(breaks = 0:10 * 10) + 
+  geom_vline(aes(xintercept=likely_enrolled_prop * 100),
              color=primary[4], linetype = "dashed", size=1) +
   ylab("Density") + 
   xlab("Predicted overall enrollment") + 
   labs(title="Predicted overall enrollment", subtitle=paste("Mean=", round(mean(df$enroll_percent_1, na.rm=T), 1), 
-                                                            ", Median=", round(median(df$enroll_percent_1, na.rm=T), 1), collapse="")) +
+                                                            ", Median=", round(median(df$enroll_percent_1, na.rm=T), 1),
+                                                            ", Reported likely enroll=", round(likely_enrolled_prop, 2) * 100, collapse="")) +
   theme_hodp() +
   theme(legend.position = "none")
 grid::grid.raster(logo, x = 0.01, y = 0.01, just = c('left', 'bottom'), width = unit(1.5, 'cm'))
@@ -205,7 +208,7 @@ ggplot(criteria_df, aes(x=factor(criteria, levels=rev(criteria_options)), y=prop
 df$criteria_count <- (df$criteria_1 == "Yes") + (df$criteria_2  == "Yes") + (df$criteria_3 == "Yes") + (df$criteria_4 == "Yes") + (df$criteria_5 == "Yes") + 
                       (df$criteria_6 == "Yes") + (df$criteria_7 == "Yes") + (df$criteria_8 == "Yes") + (df$criteria_9 == "Yes") + (df$criteria_10 == "Yes")
 
-# How llikely allowed to return
+# How likely allowed to return
 ggplot(data=subset(df, (!is.na(allowed_return) & allowed_return != "")), aes(x=factor(allowed_return))) + 
   geom_bar(aes(fill = factor(allowed_return))) + 
   scale_fill_manual(values = c(primary[1], primary[4], primary[2], primary[3])) + 
@@ -259,15 +262,19 @@ ggplot(data=infected_means_df, aes(x=on_campus_label, y=infected_mean)) +
   theme(legend.position = "none")
 grid::grid.raster(logo, x = 0.01, y = 0.01, just = c('left', 'bottom'), width = unit(1.5, 'cm'))
 
+likely_on_campus_prop <- sum(df$on_campus == "Extremely likely" | df$on_campus == "Somewhat likely") / (sum(df$enroll != "" & df$enroll != "Extremely unlikely"))
 # Percent of students on-campus
 ggplot(data=subset(df, !is.na(on_campus_percent_1)), aes(x = on_campus_percent_1, color = primary[1])) +
   geom_density(bw=6, alpha=0.25, fill=primary[1], size = 2) + 
-  geom_vline(aes(xintercept=mean(on_campus_percent_1)),
+  scale_x_continuous(breaks = 0:10 * 10) + 
+  geom_vline(aes(xintercept=likely_on_campus_prop * 100),
              color=primary[4], linetype = "dashed", size=1) +
   ylab("Density") + 
   xlab("Predicted proportion of enrolled students on-campus") + 
   labs(title="What proportion of enrolled students will be on-campus?", subtitle=paste("Mean=", round(mean(df$on_campus_percent_1, na.rm=T), 1), 
-                                                                                       ", Median=", round(median(df$on_campus_percent_1, na.rm=T), 1), collapse=""))  +
+                                                                                       ", Median=", round(median(df$on_campus_percent_1, na.rm=T), 1),
+                                                                                       ", Reported likely on-campus=", round(likely_on_campus_prop, 2) * 100,
+                                                                                       collapse=""))  +
   theme_hodp() +
   theme(legend.position = "none")
 
@@ -276,8 +283,9 @@ ggplot(data=subset(df, !is.na(on_campus_percent_1)), aes(x = on_campus_percent_1
 #############################
 ggplot(data=subset(df, !is.na(df$percent_infected_1)), aes(x = percent_infected_1, color = primary[1])) +
   geom_density(bw=6, alpha=0.25, fill=primary[1], size = 2) + 
-  geom_vline(aes(xintercept=mean(percent_infected_1)),
-             color=primary[4], linetype = "dashed", size=1) +
+  scale_x_continuous(breaks = 0:10 * 10) + 
+  # geom_vline(aes(xintercept=mean(percent_infected_1)),
+  #           color=primary[4], linetype = "dashed", size=1) +
   ylab("Density") + 
   xlab("Predicted proportion of students on-campus infected") + 
   labs(title="What proportion of students on-campus will be infected?", subtitle=paste("Mean=", round(mean(df$percent_infected_1, na.rm=T), 1), 
