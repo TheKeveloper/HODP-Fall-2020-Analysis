@@ -4,7 +4,7 @@ library(stringr)
 library(reshape2)
 library(plyr)
 
-df <- read.csv("survey-data-20-07-10.csv")
+df <- read.csv("survey-data-20-07-11.csv")
 
 se <- function(x) sqrt(var(x) / length(x))
 
@@ -23,7 +23,6 @@ ggplot(data=subset(df, (!is.na(enroll) & enroll != "")), aes(x=factor(enroll))) 
   scale_x_discrete(labels = function(x) str_wrap(x, width = 10), 
                    limits = c("Extremely likely", "Somewhat likely", "Somewhat unlikely", "Extremely unlikely")) +
   geom_text(stat='count', aes(label=percent((..count..)/sum((..count..)))), vjust=-1) +
-  ylim(c(0, 850)) + 
   xlab("Likelihood of enrolling for Fall 2020") + 
   ylab("Count") + 
   labs(title="Are students enrolling in the Fall?") +
@@ -43,28 +42,12 @@ ggplot(data=subset(df, (!is.na(enroll) & enroll != "" & year != "Other" & year !
   labs(title="Students returning by year", fill = "Class Year")
 grid::grid.raster(logo, x = 0.01, y = 0.01, just = c('left', 'bottom'), width = unit(1.5, 'cm'))
 
-likely_enrolled_prop <- sum(df$enroll == "Extremely likely" | df$enroll == "Somewhat likely") / (sum(df$enroll != ""))
-# Predicted overall enrollment density
-ggplot(data=subset(df, !is.na(df$enroll_percent_1)), aes(x = enroll_percent_1, color = primary[1])) +
-  geom_density(bw=6, alpha=0.25, fill=primary[1], size = 2) + 
-  scale_x_continuous(breaks = 0:10 * 10) + 
-  geom_vline(aes(xintercept=likely_enrolled_prop * 100),
-             color=primary[4], linetype = "dashed", size=1) +
-  ylab("Density") + 
-  xlab("Predicted overall enrollment") + 
-  labs(title="Predicted overall enrollment", subtitle=paste("Mean=", round(mean(df$enroll_percent_1, na.rm=T), 1), 
-                                                            ", Median=", round(median(df$enroll_percent_1, na.rm=T), 1),
-                                                            ", Reported likely enroll=", round(likely_enrolled_prop, 2) * 100, collapse="")) +
-  theme_hodp() +
-  theme(legend.position = "none")
-grid::grid.raster(logo, x = 0.01, y = 0.01, just = c('left', 'bottom'), width = unit(1.5, 'cm'))
-
 # Simulating the enrollment
 ## ASSUMPTIONS:
 ## Within each class year, coming back proportion is representative
 ## Number of people on college facebook in each class year is correct
 ## Assumptions on what "Likely" and "Very likely" mean specified below
-sim_enrollment_prop <- function(df, enroll_probs = c(0.95, 0.7, 0.3, 0.05)) {
+sim_enrollment_prop <- function(df, enroll_probs = c(1, 0.75, 0.25, 0)) {
   sample_size <- nrow(df)
   years <- c("2024", "2023", "2022", "2021")
   year_props <- c(0.2386706949, 0.2536253776, 0.2527190332, 0.2549848943)
@@ -92,16 +75,32 @@ sim_enrollment_prop <- function(df, enroll_probs = c(0.95, 0.7, 0.3, 0.05)) {
   return(sum(predicted_enrollments) / sum(ns))
 }
 
-sim_props <- replicate(1000, sim_enrollment_prop(df, enroll_probs=c(0.95, 0.8, 0.4, 0.1)))
+sim_props <- replicate(1000, sim_enrollment_prop(df, enroll_probs=c(0.99, 0.75, 0.25, 0.01)))
+
 
 ggplot(data=data.frame("sim_enroll" = sim_props), aes(x = sim_enroll, color = primary[1])) +
-  geom_density(bw = 0.005, alpha=0.25, fill=primary[1], size = 2) + 
+  geom_density(bw = 0.01, alpha=0.25, fill=primary[1], size = 2) + 
   ylab("Density") + 
   xlab("Simulated overall enrollment") + 
   labs(title="Simulated overall enrollment", subtitle=paste("Sims=", length(sim_props), ", Mean=", round(mean(sim_props) * 100, 1), sep = "")) +
   theme_hodp() +
   theme(legend.position = "none")
 
+likely_enrolled_prop <- sum(df$enroll == "Extremely likely" | df$enroll == "Somewhat likely") / (sum(df$enroll != ""))
+# Predicted overall enrollment density
+ggplot(data=subset(df, !is.na(df$enroll_percent_1)), aes(x = enroll_percent_1, color = primary[1])) +
+  geom_density(bw=6, alpha=0.25, fill=primary[1], size = 2) + 
+  scale_x_continuous(breaks = 0:10 * 10) + 
+  geom_vline(aes(xintercept=likely_enrolled_prop * 100),
+             color=primary[4], linetype = "dashed", size=1) +
+  ylab("Density") + 
+  xlab("Predicted overall enrollment") + 
+  labs(title="Predicted overall enrollment", subtitle=paste("Mean=", round(mean(df$enroll_percent_1, na.rm=T), 1), 
+                                                            ", Median=", round(median(df$enroll_percent_1, na.rm=T), 1),
+                                                            ", Reported likely enroll=", round(likely_enrolled_prop, 2) * 100, collapse="")) +
+  theme_hodp() +
+  theme(legend.position = "none")
+grid::grid.raster(logo, x = 0.01, y = 0.01, just = c('left', 'bottom'), width = unit(1.5, 'cm'))
 
 
 # Predicted enrollment in same class density
@@ -178,7 +177,6 @@ ggplot(data=subset(df, (!is.na(semester_off_plans) & semester_off_plans != "")),
   scale_x_discrete(labels = function(x) str_wrap(x, width = 20), 
                    limits = c("Internship/Industry Work", "Research", "Volunteering", "Travel", "Chill at home", "Other")) +
   geom_text(stat='count', aes(label=percent((..count..)/sum((..count..)))), vjust=-1) +
-  ylim(c(0, 450)) + 
   xlab("Plan") + 
   ylab("Count") + 
   labs(title="What would students do during semester off?") +
@@ -254,6 +252,8 @@ ggplot(criteria_df, aes(x=factor(criteria, levels=rev(criteria_options)), y=prop
 df$criteria_count <- (df$criteria_1 == "Yes") + (df$criteria_2  == "Yes") + (df$criteria_3 == "Yes") + (df$criteria_4 == "Yes") + (df$criteria_5 == "Yes") + 
                       (df$criteria_6 == "Yes") + (df$criteria_7 == "Yes") + (df$criteria_8 == "Yes") + (df$criteria_9 == "Yes") + (df$criteria_10 == "Yes")
 
+sum(df$criteria_count == 0 & df$criteria_1 != "") / sum(df$criteria_1 != "")
+
 # How likely allowed to return
 ggplot(data=subset(df, (!is.na(allowed_return) & allowed_return != "")), aes(x=factor(allowed_return))) + 
   geom_bar(aes(fill = factor(allowed_return))) + 
@@ -324,6 +324,20 @@ ggplot(data=subset(df, !is.na(on_campus_percent_1)), aes(x = on_campus_percent_1
   theme_hodp() +
   theme(legend.position = "none")
 
+# where live if not on campus
+ggplot(data=subset(df, (!is.na(location_off_campus) & location_off_campus != "")), aes(x=factor(location_off_campus))) + 
+  geom_bar(aes(fill = factor(location_off_campus))) + 
+  scale_fill_manual(values = c(primary[1], primary[4], primary[2], primary[3])) + 
+  scale_x_discrete(labels = function(x) str_wrap(x, width = 20), 
+                   limits = c("Family Home", "Living with Harvard friends", "Personal Apartment/Home (not with Harvard friends)", "Other")) +
+  geom_text(stat='count', aes(label=percent((..count..)/sum((..count..)))), vjust=-1) +
+  xlab("Off-campus location") + 
+  ylab("Count") + 
+  labs(title="Where will students live off campus?") +
+  theme_hodp() +
+  theme(legend.position = "none")
+grid::grid.raster(logo, x = 0.01, y = 0.01, just = c('left', 'bottom'), width = unit(1.5, 'cm'))
+
 #############################
 #### EVALUATING POLICIES ####
 #############################
@@ -331,7 +345,7 @@ ggplot(data=subset(df, !is.na(on_campus_percent_1)), aes(x = on_campus_percent_1
 ggplot(data=subset(df, !is.na(rating_overall_1)), aes(x=rating_overall_1)) +
   geom_histogram(bins = 10, fill = primary[1]) + 
   theme_hodp() +
-  labs(title="Overall rating of Fall 2020 policy") +
+  labs(title="Overall rating of Fall 2020 policy", subtitle=paste("Mean:", round(mean(df$rating_overall_1, na.rm = T), 2), collapse="")) +
   scale_x_continuous(breaks = 1:10) +
   ylab("Count") +
   xlab("Rating")
@@ -361,7 +375,6 @@ ggplot(data=subset(df, (!is.na(opinion_precautions) & opinion_precautions != "" 
   scale_x_discrete(labels = function(x) str_wrap(x, width = 30), 
                    limits = c("Too many precautionary measures taken", "Just right", "Too few precautionary measures taken")) +
   geom_text(stat='count', aes(label=percent((..count..)/sum((..count..)))), vjust=-1) +
-  ylim(c(0, 650)) + 
   xlab("Opinion on number of precautions taken on-campus") + 
   ylab("Count") + 
   labs(title="Are enough precautions taken on-campus?") +
@@ -410,6 +423,7 @@ for (row in 1:nrow(concerns_df)) {
   concerns_df[row, "prop"] <- concerns_df[row, "count"] / length(v[!is.na(v) & v != ""])
 }
 
+# Do we need percentage labels? There's not a good way of making them look nice
 ggplot(concerns_df, aes(x=factor(concern, levels=rev(concern_options)), y=prop, 
                         fill=factor(quality, levels=c("Very poorly ", "Somewhat poorly ", "Somewhat well", "Very well")))) +
   geom_bar(stat="identity") +
