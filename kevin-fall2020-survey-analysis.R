@@ -59,6 +59,51 @@ ggplot(data=subset(df, !is.na(df$enroll_percent_1)), aes(x = enroll_percent_1, c
   theme(legend.position = "none")
 grid::grid.raster(logo, x = 0.01, y = 0.01, just = c('left', 'bottom'), width = unit(1.5, 'cm'))
 
+# Simulating the enrollment
+## ASSUMPTIONS:
+## Within each class year, coming back proportion is representative
+## Number of people on college facebook in each class year is correct
+## Assumptions on what "Likely" and "Very likely" mean specified below
+sim_enrollment_prop <- function(df, enroll_probs = c(0.95, 0.7, 0.3, 0.05)) {
+  sample_size <- nrow(df)
+  years <- c("2024", "2023", "2022", "2021")
+  year_props <- c(0.2386706949, 0.2536253776, 0.2527190332, 0.2549848943)
+  names(year_props) <- years
+  ns <- round(year_props * sample_size)
+  names(ns) <- years
+  names(enroll_probs) <- likelihoods
+  year_responses <- list(
+    "2024" = df$enroll[df$year == 2024], 
+    "2023" = df$enroll[df$year == 2023],
+    "2022" = df$enroll[df$year == 2022],
+    "2021" = df$enroll[df$year == 2021]
+  )
+  predicted_enrollments <- c(
+    "2024" = 0,
+    "2023" = 0,
+    "2022" = 0,
+    "2021" = 0
+  )
+  sim_individual <- Vectorize(function(x) rbinom(1, 1, enroll_probs[[x]]))
+  for (year in years) {
+    sample_responses <- sample(year_responses[[year]], ns[[year]], replace = T)
+    predicted_enrollments[[year]] <- sum(sim_individual(sample_responses))
+  }
+  return(sum(predicted_enrollments) / sum(ns))
+}
+
+sim_props <- replicate(1000, sim_enrollment_prop(df, enroll_probs=c(0.95, 0.8, 0.4, 0.1)))
+
+ggplot(data=data.frame("sim_enroll" = sim_props), aes(x = sim_enroll, color = primary[1])) +
+  geom_density(bw = 0.005, alpha=0.25, fill=primary[1], size = 2) + 
+  ylab("Density") + 
+  xlab("Simulated overall enrollment") + 
+  labs(title="Simulated overall enrollment", subtitle=paste("Sims=", length(sim_props), ", Mean=", round(mean(sim_props) * 100, 1), sep = "")) +
+  theme_hodp() +
+  theme(legend.position = "none")
+
+
+
 # Predicted enrollment in same class density
 ggplot(data=subset(df, year != "Other" & year != "" & !is.na(enroll_percent_1)), aes(x = enroll_percent_2, color=year)) +
   geom_density(bw=10, size=2, alpha = 0.2) + 
