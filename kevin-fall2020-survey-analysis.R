@@ -1,8 +1,10 @@
 source('styleguide.R')
+library(scales)
 library(stringr)
 library(reshape2)
+library(plyr)
 
-df <- read.csv("survey-data-20-07-09.csv")
+df <- read.csv("survey-data-20-07-10.csv")
 
 se <- function(x) sqrt(var(x) / length(x))
 
@@ -21,7 +23,7 @@ ggplot(data=subset(df, (!is.na(enroll) & enroll != "")), aes(x=factor(enroll))) 
   scale_x_discrete(labels = function(x) str_wrap(x, width = 10), 
                    limits = c("Extremely likely", "Somewhat likely", "Somewhat unlikely", "Extremely unlikely")) +
   geom_text(stat='count', aes(label=percent((..count..)/sum((..count..)))), vjust=-1) +
-  ylim(c(0, 700)) + 
+  ylim(c(0, 850)) + 
   xlab("Likelihood of enrolling for Fall 2020") + 
   ylab("Count") + 
   labs(title="Are students enrolling in the Fall?") +
@@ -33,14 +35,13 @@ grid::grid.raster(logo, x = 0.01, y = 0.01, just = c('left', 'bottom'), width = 
 ## would someone like to take a shot at labeling this?
 ggplot(data=subset(df, (!is.na(enroll) & enroll != "" & year != "Other" & year != "" & !is.na(year))), aes(x=factor(year))) + 
   geom_bar(aes(fill = factor(enroll, levels = likelihoods), y = ..count../tapply(..count.., ..x.. ,sum)[..x..])) + 
-  scale_x_discrete(labels = function(x) str_wrap(x, width = 10)) + 
+  scale_x_discrete(labels = function(x) str_wrap(x, width = 10)) +
   scale_fill_manual(values = primary) +
   theme_hodp() + 
   xlab("Class Year") + 
   ylab("Proportion returning") + 
   labs(title="Students returning by year", fill = "Class Year")
 grid::grid.raster(logo, x = 0.01, y = 0.01, just = c('left', 'bottom'), width = unit(1.5, 'cm'))
-
 
 likely_enrolled_prop <- sum(df$enroll == "Extremely likely" | df$enroll == "Somewhat likely") / (sum(df$enroll != ""))
 # Predicted overall enrollment density
@@ -117,7 +118,7 @@ ggplot(data=subset(df, (!is.na(semesters_off) & semesters_off != "")), aes(x=fac
   scale_x_discrete(labels = str_wrap(c("Fall only", "Fall, maybe Spring", "Fall and Spring", "Longer"), width = 20),
                    limits = c("Fall only", "Fall, and maybe Spring depending on policy", "Fall and Spring", "Longer")) +
   geom_text(stat='count', aes(label=percent((..count..)/sum((..count..)))), vjust=-1) +
-  ylim(c(0, 300)) + 
+  ylim(c(0, 400)) + 
   xlab("Semesters off") + 
   ylab("Count") + 
   labs(title="How many semesters off?") +
@@ -132,7 +133,7 @@ ggplot(data=subset(df, (!is.na(semester_off_plans) & semester_off_plans != "")),
   scale_x_discrete(labels = function(x) str_wrap(x, width = 20), 
                    limits = c("Internship/Industry Work", "Research", "Volunteering", "Travel", "Chill at home", "Other")) +
   geom_text(stat='count', aes(label=percent((..count..)/sum((..count..)))), vjust=-1) +
-  ylim(c(0, 350)) + 
+  ylim(c(0, 450)) + 
   xlab("Plan") + 
   ylab("Count") + 
   labs(title="What would students do during semester off?") +
@@ -153,7 +154,7 @@ ggplot(data=subset(df, (!is.na(petition) & petition != "")), aes(x=factor(petiti
   scale_x_discrete(labels = function(x) str_wrap(x, width = 10), 
                    limits = c("Yes", "No")) +
   geom_text(stat='count', aes(label=percent((..count..)/sum((..count..)))), vjust=-1) +
-  ylim(c(0, 500)) + 
+  ylim(c(0,700)) + 
   xlab("Petitioning") + 
   ylab("Count") + 
   labs(title="How many students are petitioning?") +
@@ -215,7 +216,7 @@ ggplot(data=subset(df, (!is.na(allowed_return) & allowed_return != "")), aes(x=f
   scale_x_discrete(labels = function(x) str_wrap(x, width = 20), 
                    limits = likelihoods) +
   geom_text(stat='count', aes(label=percent((..count..)/sum((..count..)))), vjust=-1) +
-  ylim(c(0, 400)) + 
+  ylim(c(0, 600)) + 
   xlab("Likelihood allowed on-campus") + 
   ylab("Count") + 
   labs(title="How likely are upperclassmen to be allowed on-campus?") +
@@ -230,7 +231,7 @@ ggplot(data=subset(df, (!is.na(on_campus) & on_campus != "")), aes(x=factor(on_c
   scale_x_discrete(labels = function(x) str_wrap(x, width = 20), 
                    limits = likelihoods) +
   geom_text(stat='count', aes(label=percent((..count..)/sum((..count..)))), vjust=-1) +
-  ylim(c(0, 400)) + 
+  ylim(c(0, 500)) + 
   xlab("Likelihood to return if allowed") + 
   ylab("Count") + 
   labs(title="How likely are students to return if allowed?") +
@@ -262,7 +263,7 @@ ggplot(data=infected_means_df, aes(x=on_campus_label, y=infected_mean)) +
   theme(legend.position = "none")
 grid::grid.raster(logo, x = 0.01, y = 0.01, just = c('left', 'bottom'), width = unit(1.5, 'cm'))
 
-likely_on_campus_prop <- sum(df$on_campus == "Extremely likely" | df$on_campus == "Somewhat likely") / (sum(df$enroll != "" & df$enroll != "Extremely unlikely"))
+likely_on_campus_prop <- sum((df$on_campus == "Extremely likely" | df$on_campus == "Somewhat likely")) / (sum(df$enroll != "" & df$enroll != "Extremely unlikely"))
 # Percent of students on-campus
 ggplot(data=subset(df, !is.na(on_campus_percent_1)), aes(x = on_campus_percent_1, color = primary[1])) +
   geom_density(bw=6, alpha=0.25, fill=primary[1], size = 2) + 
