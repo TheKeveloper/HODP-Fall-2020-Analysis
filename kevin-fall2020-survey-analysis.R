@@ -200,7 +200,7 @@ ggplot(criteria_df, aes(x=factor(criteria, levels=rev(criteria_options)), y=prop
   scale_fill_manual(values=primary[1:2]) +
   guides(fill = guide_legend(reverse = TRUE)) +
   coord_flip() +
-  geom_text(aes(label=scales::percent(prop, accuracy=1)), position="stack", hjust=1, size=4) +
+  geom_text(aes(label=scales::percent(prop, accuracy=1)), position="stack", hjust=-0.1, size=4) +
   theme_hodp() +
   theme(legend.title = element_blank(), 
        axis.text.y =element_text(size=10,  family="Helvetica"))
@@ -282,6 +282,49 @@ ggplot(data=subset(df, !is.na(on_campus_percent_1)), aes(x = on_campus_percent_1
 #############################
 #### EVALUATING POLICIES ####
 #############################
+# Overall opinion on Harvard policy
+ggplot(data=subset(df, !is.na(rating_overall_1)), aes(x=rating_overall_1)) +
+  geom_histogram(bins = 10, fill = primary[1]) + 
+  theme_hodp() +
+  labs(title="Overall rating of Fall 2020 policy") +
+  scale_x_continuous(breaks = 1:10) +
+  ylab("Count") +
+  xlab("Rating")
+grid::grid.raster(logo, x = 0.01, y = 0.01, just = c('left', 'bottom'), width = unit(1.3, 'cm'))
+
+# Opinion on number of students eligible
+ggplot(data=subset(df, (!is.na(opinion_eligibility) & opinion_eligibility != "" & opinion_eligibility != "Don't know enough to say")), 
+       aes(x=factor(opinion_eligibility))) + 
+  geom_bar(aes(fill = factor(opinion_eligibility))) + 
+  scale_fill_manual(values = c(primary[1], primary[4], primary[2], primary[3])) + 
+  scale_x_discrete(labels = function(x) str_wrap(x, width = 20), 
+                   limits = c("Allows too few students back on campus", "Just right", "Number is just right, but it should be a different cohort in the Fall", "Allows too many students back on campus")) +
+  geom_text(stat='count', aes(label=percent((..count..)/sum((..count..)))), vjust=-1) +
+  ylim(c(0, 800)) + 
+  xlab("Opinion on number of students eligible for on-campus") + 
+  ylab("Count") + 
+  labs(title="Are enough students eligible to return to campus?") +
+  theme_hodp() +
+  theme(legend.position = "none")
+grid::grid.raster(logo, x = 0.01, y = 0.01, just = c('left', 'bottom'), width = unit(1.5, 'cm'))
+
+# opinion of precautions taken
+ggplot(data=subset(df, (!is.na(opinion_precautions) & opinion_precautions != "" & opinion_precautions != "Don't know enough to say")), 
+       aes(x=factor(opinion_precautions))) + 
+  geom_bar(aes(fill = factor(opinion_precautions))) + 
+  scale_fill_manual(values = c(primary[2], primary[3], primary[1])) + 
+  scale_x_discrete(labels = function(x) str_wrap(x, width = 30), 
+                   limits = c("Too many precautionary measures taken", "Just right", "Too few precautionary measures taken")) +
+  geom_text(stat='count', aes(label=percent((..count..)/sum((..count..)))), vjust=-1) +
+  ylim(c(0, 650)) + 
+  xlab("Opinion on number of precautions taken on-campus") + 
+  ylab("Count") + 
+  labs(title="Are enough precautions taken on-campus?") +
+  theme_hodp() +
+  theme(legend.position = "none")
+grid::grid.raster(logo, x = 0.01, y = 0.01, just = c('left', 'bottom'), width = unit(1.5, 'cm'))
+
+# density plot of predicted infection proportion
 ggplot(data=subset(df, !is.na(df$percent_infected_1)), aes(x = percent_infected_1, color = primary[1])) +
   geom_density(bw=6, alpha=0.25, fill=primary[1], size = 2) + 
   scale_x_continuous(breaks = 0:10 * 10) + 
@@ -294,4 +337,47 @@ ggplot(data=subset(df, !is.na(df$percent_infected_1)), aes(x = percent_infected_
   theme_hodp() +
   theme(legend.position = "none")
 grid::grid.raster(logo, x = 0.01, y = 0.01, just = c('left', 'bottom'), width = unit(1.5, 'cm'))
+
+# opinions on specific concerns
+concern_labels <- c(
+  "Quality of remote course instruction",
+  "Student mental health",
+  "On-campus social interactions",
+  "Off-campus social interactions",
+  "Extracurriculars",
+  "Equity of access to resources for school"
+)
+
+concern_options <- paste("address_concerns_", 1:6, sep = "")
+
+concerns_df <-data.frame("concern" = rep(concern_options, times=4), 
+                         "quality" = c(rep("Very poorly ", times=length(concern_options)),
+                                       rep("Somewhat poorly ", times=length(concern_options)),
+                                       rep("Somewhat well", times=length(concern_options)),
+                                       rep("Very well", times=length(concern_options))),
+                         "prop" = rep(0, times=4*length(concern_options)))
+
+for (row in 1:nrow(concerns_df)) {
+  current_concern <- concerns_df[row, "concern"]
+  current_quality <- concerns_df[row, "quality"]
+  v <- df[current_concern]
+  concerns_df[row, "count"] <- table(v)[current_quality]
+  concerns_df[row, "prop"] <- concerns_df[row, "count"] / length(v[!is.na(v) & v != ""])
+}
+
+ggplot(concerns_df, aes(x=factor(concern, levels=rev(concern_options)), y=prop, 
+                        fill=factor(quality, levels=c("Very poorly ", "Somewhat poorly ", "Somewhat well", "Very well")))) +
+  geom_bar(stat="identity") +
+  xlab('') +
+  ylab('Percent') +
+  ggtitle("How well did Harvard address specific concerns?") +
+  scale_x_discrete(labels=str_wrap(rev(concern_labels), width=20)) +
+  scale_fill_manual(values=c(primary[5], primary[3], primary[2], primary[1])) +
+  guides(fill = guide_legend(reverse = TRUE)) +
+  coord_flip() +
+  geom_text(aes(label=scales::percent(prop, accuracy=1)), position="stack", hjust=-0.1, size=4) +
+  theme_hodp() +
+  theme(legend.title = element_blank(), 
+        axis.text.y =element_text(size=10,  family="Helvetica"))
+# plot.title = element_text(size=20,  family="Helvetica", face = "bold", margin = margin(t = 0, r = 0, b = 10, l = 0)))
   
