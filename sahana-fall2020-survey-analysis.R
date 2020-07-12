@@ -28,42 +28,6 @@ likelihoods <- c("Extremely likely", "Somewhat likely", "Somewhat unlikely", "Ex
 ####################
 
 
-# Enrolling by year with percentages
-hi <- select(df, year, enroll)
-hi <- hi[hi$year != "" & hi$year != "Other" & !is.na(hi$enroll) & hi$enroll != "" & !is.na(hi$year), ]
-table(hi)
-
-year <- c(rep(c("2021", "2022", "2023", "2024"), each = 4))
-cat <- c(rep(c("Extremely unlikely", "Somewhat unlikely", "Somewhat likely", "Extremely likely"), times =4))
-a <- 230; b <- 228; c <- 242; d <- 376;
-freq <- c(55/a, 30/a, 31/a, 114/a, 60/b, 26/b, 43/b, 99/b, 36/c, 40/c, 56/c, 110/c, 8/d, 24/d, 75/d, 269/d)
-enroll_clean_data <- data.frame(year, cat, freq)
-
-ggplot(enroll_clean_data, aes(x=year, y=freq, fill=cat, label=percent(freq))) + 
-  geom_bar(stat = "identity") + 
-  geom_text(size = 3, position = position_stack(vjust = 0.5)) + 
-  scale_fill_manual(values = primary) +
-  theme_hodp() + 
-  xlab("Class Year") + 
-  ylab("Proportion returning") + 
-  labs(title="Students returning by year", fill = "Class Year")
-grid::grid.raster(logo, x = 0.01, y = 0.01, just = c('left', 'bottom'), width = unit(1.5, 'cm'))
-
-# Students enrolling by class year
-## would someone like to take a shot at labeling this?
-ggplot(data=subset(df, (!is.na(enroll) & enroll != "" & year != "Other" & year != "" & !is.na(year))), aes(x=factor(year))) + 
-  geom_bar(aes(fill = factor(enroll, levels = likelihoods), y = ..count../tapply(..count.., ..x.. ,sum)[..x..])) + 
-  scale_x_discrete(labels = function(x) str_wrap(x, width = 10)) +
-  scale_fill_manual(values = primary) +
-  theme_hodp() + 
-  xlab("Class Year") + 
-  ylab("Proportion returning") + 
-  labs(title="Students returning by year", fill = "Class Year")
-grid::grid.raster(logo, x = 0.01, y = 0.01, just = c('left', 'bottom'), width = unit(1.5, 'cm'))
-
-likely_enrolled_prop <- sum(df$enroll == "Extremely likely" | df$enroll == "Somewhat likely") / (sum(df$enroll != ""))
-
-
 # Where would people be taking classes from if off-campus? location_off_campus
 ggplot(data=subset(df, (!is.na(location_off_campus) & location_off_campus != "")), aes(x=factor(location_off_campus))) + 
   geom_bar(aes(fill = factor(location_off_campus))) + 
@@ -93,7 +57,7 @@ ggplot(data=subset(df, (!is.na(opinion_eligibility) & opinion_eligibility != "")
   theme(legend.position = "none")
 grid::grid.raster(logo, x = 0.01, y = 0.01, just = c('left', 'bottom'), width = unit(1.5, 'cm'))
 
-# opinion_eligibility by year
+# opinion_eligibility by year - doean't have labels but can add
 opinions <- c("Allows too few students back on campus", "Just right", "Number is just right, but it should be a different cohort in the Fall", "Allows too many students back on campus", "Don't know enough to say")
 opinions
 ggplot(data=subset(df, (!is.na(opinion_eligibility) & opinion_eligibility != " " & opinion_eligibility != "" & opinion_eligibility != "NA" & year != "Other" & year != "" & !is.na(year))), aes(x=factor(year))) + 
@@ -222,7 +186,7 @@ ggplot(data=finaid_data, aes(x=finaid_ops, y = finaid_op)) +
   theme(legend.position = "none")
 grid::grid.raster(logo, x = 0.01, y = 0.01, just = c('left', 'bottom'), width = unit(1.5, 'cm'))
 
-# finaid opinions among those on finaid
+# finaid opinions among those on finaid - almost exactly the same as among overall population, don't need it
 nrow(df)
 fdf <- df[!is.na(df$support_financial_ai) & df$support_financial_ai != "" & df$financial_aid == "Yes", ]; nrow(fdf)
 notenough <- nrow(fdf[grepl("Not enough money provided to off-campus students", fdf$support_financial_ai, fixed = TRUE), ])
@@ -245,12 +209,45 @@ ggplot(data=finaid_data, aes(x=finaid_ops, y = finaid_op)) +
   geom_text(aes(label=percent(finaid_op / nrow(fdf))), vjust = -1.5) +
   xlab("Opinion") + 
   ylab("Count") + 
-  labs(title="Financial Aid Policy Opinions") +
+  labs(title="Financial Aid Policy Opinions (among studdents on aid)") +
   theme_hodp() +
   theme(legend.position = "none")
 grid::grid.raster(logo, x = 0.01, y = 0.01, just = c('left', 'bottom'), width = unit(1.5, 'cm'))
 
 # most frequent words and word cloud of free text
+dfCorpus <- Corpus(VectorSource(df$Q22)) 
+# inspect(dfCorpus)
+toSpace <- content_transformer(function (x , pattern ) gsub(pattern, " ", x))
+dfCorpus <- tm_map(dfCorpus, toSpace, "/")
+dfCorpus <- tm_map(dfCorpus, toSpace, "@")
+dfCorpus <- tm_map(dfCorpus, toSpace, "\\|")
+
+# Convert the text to lower case
+dfCorpus <- tm_map(dfCorpus, content_transformer(tolower))
+# Remove numbers
+dfCorpus <- tm_map(dfCorpus, removeNumbers)
+# Remove punctuations
+dfCorpus <- tm_map(dfCorpus, removePunctuation)
+# Remove your own stop word
+# specify your stopwords as a character vector
+dfCorpus <- tm_map(dfCorpus, removeWords, c("harvard", "student", "students", "'s", "'ve", "also", "'m", "'re", "many", "though", "one", "can", "seem", "will","think", "will", "plan", "like", "make", "person"))
+# Remove english common stopwords
+dfCorpus <- tm_map(dfCorpus, removeWords, stopwords("english"))
+# Eliminate extra white spaces
+dfCorpus <- tm_map(dfCorpus, stripWhitespace)
+# Text stemming
+# dfCorpus <- tm_map(dfCorpus, stemDocument)
+dtm <- TermDocumentMatrix(dfCorpus)
+m <- as.matrix(dtm)
+v <- sort(rowSums(m),decreasing=TRUE)
+d <- data.frame(word = names(v),freq=v)
+head(d, 30)
+
+set.seed(1234)
+wordcloud(words = d$word, freq = d$freq, min.freq = 10,
+          max.words=200, random.order=FALSE, rot.per=0.35, 
+          colors=brewer.pal(8, "Dark2"))
+
 
 # sentiment analysis
 
