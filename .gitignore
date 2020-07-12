@@ -45,5 +45,6 @@ vignettes/*.pdf
 .DS_Store
 
 !survey-data-public.csv
+!survey-data-SA-public.csv
 
 
