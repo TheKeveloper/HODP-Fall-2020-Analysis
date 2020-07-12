@@ -4,7 +4,7 @@ library(stringr)
 library(reshape2)
 library(plyr)
 
-df <- read.csv("survey-data-20-07-11.csv")
+df <- read.csv("survey-data-final.csv")
 
 se <- function(x) sqrt(var(x) / length(x))
 
@@ -51,9 +51,9 @@ for (row in 1:nrow(enroll_df)) {
 ggplot(enroll_df, aes(x = factor(year, levels = c("Overall", "2024", "2023", "2022", "2021")), 
                                  y = prop, 
                                 fill = factor(enroll, levels = rev(likelihoods)), 
-                                    label = percent(prop))) +
+                                    label = percent(prop, accuracy=1))) +
   geom_bar(stat = "identity") +
-  geom_text(size = 3, position = position_stack(vjust = 0.5)) + 
+  geom_text(size = 4, position = position_stack(vjust = 0.5)) + 
   scale_x_discrete(labels = function(x) str_wrap(x, width = 10)) +
   scale_fill_manual(values = c(primary[5], primary[3], primary[2], primary[1]), guide = guide_legend(reverse = T)) +
   theme_hodp() + 
@@ -62,12 +62,58 @@ ggplot(enroll_df, aes(x = factor(year, levels = c("Overall", "2024", "2023", "20
   labs(title="Students returning by year", fill = "Likelihood of enrolling")
 grid::grid.raster(logo, x = 0.01, y = 0.01, just = c('left', 'bottom'), width = unit(1.5, 'cm'))
 
+# Enrollment by financial aid and international status
+groups_enroll_df <- data.frame(
+  enroll=rep(likelihoods, 3),
+  category=rep(c("Overall", "Financial Aid", "International"), 4),
+  prop=rep(0, 12)
+)
+for (row in 1:nrow(groups_enroll_df)) {
+  current_enroll <- groups_enroll_df[row, "enroll"]
+  current_category <- groups_enroll_df[row, "category"]
+  current_label <- tolower(str_replace(current_category, " ", "_" ))
+  if(current_category == "Overall") {
+    groups_enroll_df[row, "prop"] <- sum(df$enroll == current_enroll) / sum(df$enroll != "")
+  }
+  else{
+    groups_enroll_df[row, "prop"] <- sum(df[current_label] == "Yes" & df$enroll == current_enroll) / sum(df[current_label] == "Yes" & df$enroll != "")
+  }
+}
+
+ggplot(groups_enroll_df, aes(x = factor(category, levels = c("Overall", "Financial Aid", "International")), 
+                             y = prop, 
+                             fill = factor(enroll, levels = rev(likelihoods)), 
+                             label = percent(prop, 1))) +
+  geom_bar(stat = "identity") +
+  geom_text(size = 4, position = position_stack(vjust = 0.5)) + 
+  scale_x_discrete(labels = function(x) str_wrap(x, width = 10)) +
+  scale_fill_manual(values = c(primary[5], primary[3], primary[2], primary[1]), guide = guide_legend(reverse = T)) +
+  theme_hodp() + 
+  xlab("Status") + 
+  ylab("Proportion returning") + 
+  labs(title="Enrollment by international and financial aid status", fill = "Likelihood of enrolling")
+grid::grid.raster(logo, x = 0.01, y = 0.01, just = c('left', 'bottom'), width = unit(1.5, 'cm'))
+
+# reweighting enrollment
+total <- sum(df$year != "Other" & df$year != "" & df$enroll != "")
+likelys <- df$enroll == "Extremely likely" | df$enroll == "Somewhat likely"
+prop_likely <- c(
+  "2024" = sum(df$year == "2024" & likelys) / sum(df$year == "2024"),
+  "2023" = sum(df$year == "2023" & likelys) / sum(df$year == "2023"),
+  "2022" = sum(df$year == "2022" & likelys) / sum(df$year == "2022"),
+  "2021" = sum(df$year == "2021" & likelys) / sum(df$year == "2021")
+)
+
+year_props <- c(0.2386706949, 0.2536253776, 0.2527190332, 0.2549848943)
+
+weighted_returning <- sum(prop_likely * year_props)
+
 # Simulating the enrollment
 ## ASSUMPTIONS:
 ## Within each class year, coming back proportion is representative
 ## Number of people on college facebook in each class year is correct
 ## Assumptions on what "Likely" and "Very likely" mean specified below
-sim_enrollment_prop <- function(df, enroll_probs = c(1, 0.75, 0.25, 0)) {
+sim_enrollment_prop <- function(df, enroll_probs = c(0.99, 0.75, 0.25, 0.01)) {
   sample_size <- nrow(df)
   years <- c("2024", "2023", "2022", "2021")
   year_props <- c(0.2386706949, 0.2536253776, 0.2527190332, 0.2549848943)
@@ -95,7 +141,8 @@ sim_enrollment_prop <- function(df, enroll_probs = c(1, 0.75, 0.25, 0)) {
   return(sum(predicted_enrollments) / sum(ns))
 }
 
-sim_props <- replicate(1000, sim_enrollment_prop(df, enroll_probs=c(0.99, 0.75, 0.25, 0.01)))
+
+sim_props <- replicate(10000, sim_enrollment_prop(df, enroll_probs=c(0.99, 0.75, 0.25, 0.01)))
 
 
 ggplot(data=data.frame("sim_enroll" = sim_props), aes(x = sim_enroll, color = primary[1])) +
@@ -105,6 +152,7 @@ ggplot(data=data.frame("sim_enroll" = sim_props), aes(x = sim_enroll, color = pr
   labs(title="Simulated overall enrollment", subtitle=paste("Sims=", length(sim_props), ", Mean=", round(mean(sim_props) * 100, 1), sep = "")) +
   theme_hodp() +
   theme(legend.position = "none")
+grid::grid.raster(logo, x = 0.01, y = 0.01, just = c('left', 'bottom'), width = unit(1, 'cm'))
 
 likely_enrolled_prop <- sum(df$enroll == "Extremely likely" | df$enroll == "Somewhat likely") / (sum(df$enroll != ""))
 # Predicted overall enrollment density
@@ -120,7 +168,7 @@ ggplot(data=subset(df, !is.na(df$enroll_percent_1)), aes(x = enroll_percent_1, c
                                                             ", Reported likely enroll=", round(likely_enrolled_prop, 2) * 100, collapse="")) +
   theme_hodp() +
   theme(legend.position = "none")
-grid::grid.raster(logo, x = 0.01, y = 0.01, just = c('left', 'bottom'), width = unit(1.5, 'cm'))
+grid::grid.raster(logo, x = 0.01, y = 0.01, just = c('left', 'bottom'), width = unit(1, 'cm'))
 
 
 # Predicted enrollment in same class density
@@ -131,6 +179,7 @@ ggplot(data=subset(df, year != "Other" & year != "" & !is.na(enroll_percent_1)),
   xlab("Predicted enrollment in same class") + 
   labs(title="Predicted enrollment by class", color = "Year") +
   theme_hodp()
+grid::grid.raster(logo, x = 0.01, y = 0.01, just = c('left', 'bottom'), width = unit(1.5, 'cm'))
 
 enroll_means_df <- data.frame(
   "enroll_label"=factor(likelihoods),
@@ -146,7 +195,7 @@ ggplot(data=enroll_means_df, aes(x=enroll_label, y=enroll_mean_1)) +
   scale_x_discrete(labels = function(x) str_wrap(x, width = 10), 
                    limits = c("Extremely likely", "Somewhat likely", "Somewhat unlikely", "Extremely unlikely")) +
   geom_text(stat='identity', aes(label=percent(enroll_mean_1/100)), vjust=-2) +
-  geom_errorbar(aes(ymin=enroll_mean_1 - 1.96 * enroll_se_1, ymax=enroll_mean_1 + 1.96 * enroll_se_1),
+  geom_errorbar(aes(ymin=enroll_mean_1 - enroll_se_1, ymax=enroll_mean_1 + enroll_se_1),
                 width=.2,                    # Width of the error bars
                 position=position_dodge(.9)) +
   ylim(c(0, 80)) + 
@@ -164,7 +213,7 @@ ggplot(data=enroll_means_df, aes(x=enroll_label, y=enroll_mean_2)) +
   scale_x_discrete(labels = function(x) str_wrap(x, width = 10), 
                    limits = c("Extremely likely", "Somewhat likely", "Somewhat unlikely", "Extremely unlikely")) +
   geom_text(stat='identity', aes(label=percent(enroll_mean_2/100)), vjust=-2) +
-  geom_errorbar(aes(ymin=enroll_mean_2 - 1.96 * enroll_se_2, ymax=enroll_mean_2 + 1.96 * enroll_se_2),
+  geom_errorbar(aes(ymin=enroll_mean_2 - enroll_se_2, ymax=enroll_mean_2 + enroll_se_2),
                 width=.2,                    # Width of the error bars
                 position=position_dodge(.9)) +
   ylim(c(0, 80)) + 
@@ -175,43 +224,13 @@ ggplot(data=enroll_means_df, aes(x=enroll_label, y=enroll_mean_2)) +
   theme(legend.position = "none")
 grid::grid.raster(logo, x = 0.01, y = 0.01, just = c('left', 'bottom'), width = unit(1.5, 'cm'))
 
-groups_enroll_df <- data.frame(
-  enroll=rep(likelihoods, 3),
-  category=rep(c("Overall", "Financial Aid", "International"), 4),
-  prop=rep(0, 12)
-)
-for (row in 1:nrow(groups_enroll_df)) {
-  current_enroll <- groups_enroll_df[row, "enroll"]
-  current_category <- groups_enroll_df[row, "category"]
-  current_label <- tolower(str_replace(current_category, " ", "_" ))
-  if(current_category == "Overall") {
-    groups_enroll_df[row, "prop"] <- sum(df$enroll == current_enroll) / sum(df$enroll != "")
-  }
-  else{
-    groups_enroll_df[row, "prop"] <- sum(df[current_label] == "Yes" & df$enroll == current_enroll) / sum(df[current_label] == "Yes" & df$enroll != "")
-  }
-}
-
-ggplot(groups_enroll_df, aes(x = factor(category, levels = c("Overall", "Financial Aid", "International")), 
-                      y = prop, 
-                      fill = factor(enroll, levels = rev(likelihoods)), 
-                      label = percent(prop))) +
-  geom_bar(stat = "identity") +
-  geom_text(size = 3, position = position_stack(vjust = 0.5)) + 
-  scale_x_discrete(labels = function(x) str_wrap(x, width = 10)) +
-  scale_fill_manual(values = c(primary[5], primary[3], primary[2], primary[1]), guide = guide_legend(reverse = T)) +
-  theme_hodp() + 
-  xlab("Status") + 
-  ylab("Proportion returning") + 
-  labs(title="Enrollment by international and financial aid status", fill = "Likelihood of enrolling")
-
 # How many semesters will people take off
 ggplot(data=subset(df, (!is.na(semesters_off) & semesters_off != "")), aes(x=factor(semesters_off))) + 
   geom_bar(aes(fill = factor(semesters_off))) + 
-  scale_fill_manual(values = primary) + 
+  scale_fill_manual(values = c(primary[3], primary[1], primary[2], primary[4])) + 
   scale_x_discrete(labels = str_wrap(c("Fall only", "Fall, maybe Spring", "Fall and Spring", "Longer"), width = 20),
                    limits = c("Fall only", "Fall, and maybe Spring depending on policy", "Fall and Spring", "Longer")) +
-  geom_text(stat='count', aes(label=percent((..count..)/sum((..count..)))), vjust=-1) +
+  geom_text(stat='count', aes(label=percent((..count..)/sum((..count..)), accuracy = 0.1)), vjust=-1) +
   ylim(c(0, 400)) + 
   xlab("Semesters off") + 
   ylab("Count") + 
@@ -226,7 +245,7 @@ ggplot(data=subset(df, (!is.na(semester_off_plans) & semester_off_plans != "")),
   scale_fill_manual(values = c(primary[5], primary[1], primary[6], primary[2], primary[4], primary[3])) + 
   scale_x_discrete(labels = function(x) str_wrap(x, width = 20), 
                    limits = c("Internship/Industry Work", "Research", "Volunteering", "Travel", "Chill at home", "Other")) +
-  geom_text(stat='count', aes(label=percent((..count..)/sum((..count..)))), vjust=-1) +
+  geom_text(stat='count', aes(label=percent((..count..)/sum((..count..)), accuracy=0.1)), vjust=-1) +
   xlab("Plan") + 
   ylab("Count") + 
   labs(title="What would students do during semester off?") +
@@ -285,8 +304,9 @@ for (row in 1:nrow(criteria_df)) {
 
 ggplot(criteria_df, aes(x=factor(criteria, levels=rev(criteria_options)), y=prop, fill=factor(satisfied))) +
   geom_bar(stat="identity") +
+  ylim(0, 0.3) + 
   xlab('') +
-  ylab('Percent Yes') +
+  ylab('Percent responding "Yes"') +
   ggtitle("Which criteria do students satisfy") +
   scale_x_discrete(labels=str_wrap(rev(criteria_labels), width=30)) +
   scale_fill_manual(values=primary[1]) +
@@ -297,11 +317,13 @@ ggplot(criteria_df, aes(x=factor(criteria, levels=rev(criteria_options)), y=prop
   theme(legend.title = element_blank(), 
        axis.text.y =element_text(size=10,  family="Helvetica"))
        # plot.title = element_text(size=20,  family="Helvetica", face = "bold", margin = margin(t = 0, r = 0, b = 10, l = 0)))
+grid::grid.raster(logo, x = 0.01, y = 0.01, just = c('left', 'bottom'), width = unit(1.5, 'cm'))
 
 df$criteria_count <- (df$criteria_1 == "Yes") + (df$criteria_2  == "Yes") + (df$criteria_3 == "Yes") + (df$criteria_4 == "Yes") + (df$criteria_5 == "Yes") + 
                       (df$criteria_6 == "Yes") + (df$criteria_7 == "Yes") + (df$criteria_8 == "Yes") + (df$criteria_9 == "Yes") + (df$criteria_10 == "Yes")
 
 sum(df$criteria_count == 0 & df$criteria_1 != "") / sum(df$criteria_1 != "")
+mean(df$criteria_count[df$criteria_1 != ""])
 
 # How likely allowed to return
 ggplot(data=subset(df, (!is.na(allowed_return) & allowed_return != "")), aes(x=factor(allowed_return))) + 
@@ -339,14 +361,14 @@ infected_means_df <- data.frame(
   "infected_mean"=Vectorize((function(x) mean(filter_nas(df$percent_infected_1[df$on_campus == x]))))(likelihoods),
   "infected_se"=Vectorize(function(x) se(filter_nas(df$percent_infected_1[df$on_campus == x])))(likelihoods)
 )
-# Mean expected proportion returning overall
+# Return likelihood vs infection prob
 ggplot(data=infected_means_df, aes(x=on_campus_label, y=infected_mean)) + 
   geom_bar(stat = "identity", aes(fill=on_campus_label)) +
   scale_fill_manual(values = c(primary[1], primary[4], primary[2], primary[3])) + 
   scale_x_discrete(labels = function(x) str_wrap(x, width = 20), 
                    limits = likelihoods) +
   geom_text(stat='identity', aes(label=percent(infected_mean/100)), vjust=-1, hjust=-0.7) +
-  geom_errorbar(aes(ymin=infected_mean - 1.96 * infected_se, ymax=infected_mean + 1.96 * infected_se),
+  geom_errorbar(aes(ymin=infected_mean - infected_se, ymax=infected_mean + infected_se),
                 width=.2,                    # Width of the error bars
                 position=position_dodge(.9)) +
   ylim(c(0, 40)) + 
@@ -372,6 +394,7 @@ ggplot(data=subset(df, !is.na(on_campus_percent_1)), aes(x = on_campus_percent_1
                                                                                        collapse=""))  +
   theme_hodp() +
   theme(legend.position = "none")
+grid::grid.raster(logo, x = 0.01, y = 0.01, just = c('left', 'bottom'), width = unit(1.5, 'cm'))
 
 # where live if not on campus
 ggplot(data=subset(df, (!is.na(location_off_campus) & location_off_campus != "")), aes(x=factor(location_off_campus))) + 
@@ -400,21 +423,21 @@ ggplot(data=subset(df, !is.na(rating_overall_1)), aes(x=rating_overall_1)) +
   xlab("Rating")
 grid::grid.raster(logo, x = 0.01, y = 0.01, just = c('left', 'bottom'), width = unit(1.3, 'cm'))
 
-# Opinion on number of students eligible
-ggplot(data=subset(df, (!is.na(opinion_eligibility) & opinion_eligibility != "" & opinion_eligibility != "Don't know enough to say")), 
-       aes(x=factor(opinion_eligibility))) + 
-  geom_bar(aes(fill = factor(opinion_eligibility))) + 
-  scale_fill_manual(values = c(primary[1], primary[4], primary[2], primary[3])) + 
-  scale_x_discrete(labels = function(x) str_wrap(x, width = 20), 
-                   limits = c("Allows too few students back on campus", "Just right", "Number is just right, but it should be a different cohort in the Fall", "Allows too many students back on campus")) +
-  geom_text(stat='count', aes(label=percent((..count..)/sum((..count..)))), vjust=-1) +
-  ylim(c(0, 800)) + 
-  xlab("Opinion on number of students eligible for on-campus") + 
-  ylab("Count") + 
-  labs(title="Are enough students eligible to return to campus?") +
-  theme_hodp() +
-  theme(legend.position = "none")
-grid::grid.raster(logo, x = 0.01, y = 0.01, just = c('left', 'bottom'), width = unit(1.5, 'cm'))
+# Opinion on number of students eligible -- replace with Sahana's split by class year
+# ggplot(data=subset(df, (!is.na(opinion_eligibility) & opinion_eligibility != "" & opinion_eligibility != "Don't know enough to say")), 
+#        aes(x=factor(opinion_eligibility))) + 
+#   geom_bar(aes(fill = factor(opinion_eligibility))) + 
+#   scale_fill_manual(values = c(primary[1], primary[4], primary[2], primary[3])) + 
+#   scale_x_discrete(labels = function(x) str_wrap(x, width = 20), 
+#                    limits = c("Allows too few students back on campus", "Just right", "Number is just right, but it should be a different cohort in the Fall", "Allows too many students back on campus")) +
+#   geom_text(stat='count', aes(label=percent((..count..)/sum((..count..)))), vjust=-1) +
+#   ylim(c(0, 800)) + 
+#   xlab("Opinion on number of students eligible for on-campus") + 
+#   ylab("Count") + 
+#   labs(title="Are enough students eligible to return to campus?") +
+#   theme_hodp() +
+#   theme(legend.position = "none")
+# grid::grid.raster(logo, x = 0.01, y = 0.01, just = c('left', 'bottom'), width = unit(1.5, 'cm'))
 
 # opinion of precautions taken
 ggplot(data=subset(df, (!is.na(opinion_precautions) & opinion_precautions != "" & opinion_precautions != "Don't know enough to say")), 
@@ -480,12 +503,13 @@ ggplot(concerns_df, aes(x=factor(concern, levels=rev(concern_options)), y=prop,
   ylab('Percent') +
   ggtitle("How well did Harvard address specific concerns?") +
   scale_x_discrete(labels=str_wrap(rev(concern_labels), width=20)) +
-  scale_fill_manual(values=c(primary[5], primary[3], primary[2], primary[1])) +
+  scale_fill_manual(values=c(primary[4], primary[3], primary[2], primary[1])) +
   guides(fill = guide_legend(reverse = TRUE)) +
   coord_flip() +
-  geom_text(aes(label=scales::percent(prop, accuracy=1)), position="stack", hjust=-0.1, size=4) +
+  # geom_text(aes(label=scales::percent(prop, accuracy=1)), position="stack", hjust=-0.1, size=4) +
   theme_hodp() +
   theme(legend.title = element_blank(), 
         axis.text.y =element_text(size=10,  family="Helvetica"))
 # plot.title = element_text(size=20,  family="Helvetica", face = "bold", margin = margin(t = 0, r = 0, b = 10, l = 0)))
+grid::grid.raster(logo, x = 0.01, y = 0.01, just = c('left', 'bottom'), width = unit(1.5, 'cm'))
   

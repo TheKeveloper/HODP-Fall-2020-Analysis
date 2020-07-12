@@ -15,7 +15,7 @@ library("SnowballC")
 library("wordcloud")
 library("RColorBrewer")
 
-df <- read.csv("survey-data-20-07-08.csv")
+df <- read.csv("survey-data-final.csv")
 
 se <- function(x) sqrt(var(x) / length(x))
 
@@ -42,6 +42,32 @@ ggplot(data=subset(df, (!is.na(location_off_campus) & location_off_campus != "")
   theme(legend.position = "none")
 grid::grid.raster(logo, x = 0.01, y = 0.01, just = c('left', 'bottom'), width = unit(1.5, 'cm'))
 
+classyears <- c("2021", "2022", "2023", "2024")
+ratings <- data.frame(
+  "years"=factor(classyears),
+  "rating_mean"=Vectorize((function(x) mean(filter_nas(df$rating_overall[df$year == x]))))(classyears),
+  "rating_se"=Vectorize(function(x) se(filter_nas(df$rating_overall[df$year == x])))(classyears)
+)
+
+# average decision rating by year
+ggplot(data=ratings, aes(x=years, y=rating_mean)) + 
+  geom_bar(stat = "identity", aes(fill=years)) +
+  scale_fill_manual(values = c(primary[1], primary[4], primary[2], primary[3])) + 
+  scale_x_discrete(labels = function(x) str_wrap(x, width = 10), 
+                   limits = classyears) +
+  geom_text(stat='identity', aes(label=round(rating_mean, digits=2)), vjust=-2.3) +
+  geom_errorbar(aes(ymin=rating_mean - rating_se, ymax=rating_mean + rating_se),
+                width=.2,                    # Width of the error bars
+                position=position_dodge(0.9)) +
+  ylim(c(0, 10)) + 
+  xlab("Class Year") + 
+  ylab("Mean rating of Fall 2020 Plan") + 
+  labs(title="Rating of Harvard's Plan by Class Year") +
+  theme_hodp() +
+  theme(legend.position = "none")
+grid::grid.raster(logo, x = 0.01, y = 0.01, just = c('left', 'bottom'), width = unit(1.5, 'cm'))
+
+
 
 # What do you think of the number of students allowed on campus in Fall 2020? opinion_eligibility
 ggplot(data=subset(df, (!is.na(opinion_eligibility) & opinion_eligibility != "")), aes(x=factor(opinion_eligibility))) + 
@@ -60,10 +86,11 @@ grid::grid.raster(logo, x = 0.01, y = 0.01, just = c('left', 'bottom'), width = 
 # opinion_eligibility by year - doean't have labels but can add
 opinions <- c("Allows too few students back on campus", "Just right", "Number is just right, but it should be a different cohort in the Fall", "Allows too many students back on campus", "Don't know enough to say")
 opinions
-ggplot(data=subset(df, (!is.na(opinion_eligibility) & opinion_eligibility != " " & opinion_eligibility != "" & opinion_eligibility != "NA" & year != "Other" & year != "" & !is.na(year))), aes(x=factor(year))) + 
-  geom_bar(aes(fill = factor(opinion_eligibility, levels = opinions), y = ..count../tapply(..count.., ..x.. ,sum)[..x..])) + 
+ggplot(data=subset(df, (!is.na(opinion_eligibility) & opinion_eligibility != " " & opinion_eligibility != "" & opinion_eligibility != "NA" &  
+                          opinion_eligibility != "Don't know enough to say" & year != "Other" & year != "" & !is.na(year))), aes(x=factor(year))) + 
+  geom_bar(aes(fill = factor(opinion_eligibility, levels = rev(opinions)), y = ..count../tapply(..count.., ..x.. ,sum)[..x..])) + 
   scale_x_discrete(labels = function(x) str_wrap(x, width = 10)) +
-  scale_fill_manual(values = primary) +
+  scale_fill_manual(values = rev(primary[1:4])) +
   theme_hodp() + 
   xlab("Class Year") + 
   ylab("Percentage with Opinion") + 
@@ -71,38 +98,31 @@ ggplot(data=subset(df, (!is.na(opinion_eligibility) & opinion_eligibility != " "
   labs(title="Student opinion by year", fill="Opinion on Fall 2020 Campus Policy")
 grid::grid.raster(logo, x = 0.01, y = 0.01, just = c('left', 'bottom'), width = unit(1.5, 'cm'))
 
-
-classyears <- c("2021", "2022", "2023", "2024")
-ratings <- data.frame(
-  "years"=factor(classyears),
-  "rating_mean"=Vectorize((function(x) mean(filter_nas(df$rating_overall[df$year == x]))))(classyears),
-  "rating_se"=Vectorize(function(x) se(filter_nas(df$rating_overall[df$year == x])))(classyears)
-)
-
-# average decision rating by year
-ggplot(data=ratings, aes(x=years, y=rating_mean)) + 
-  geom_bar(stat = "identity", aes(fill=years)) +
-  scale_fill_manual(values = c(primary[1], primary[4], primary[2], primary[3])) + 
-  scale_x_discrete(labels = function(x) str_wrap(x, width = 10), 
-                   limits = classyears) +
-  geom_text(stat='identity', aes(label=round(rating_mean, digits=2)), vjust=-2.3) +
-  geom_errorbar(aes(ymin=rating_mean - 1.96 * rating_se, ymax=rating_mean + 1.96 * rating_se),
-                width=.2,                    # Width of the error bars
-                position=position_dodge(0.9)) +
-  ylim(c(0, 10)) + 
-  xlab("Class Year") + 
-  ylab("Mean rating of Fall 2020 Plan") + 
-  labs(title="Rating of Harvard's Plan by Class Year") +
-  theme_hodp() +
-  theme(legend.position = "none")
-grid::grid.raster(logo, x = 0.01, y = 0.01, just = c('left', 'bottom'), width = unit(1.5, 'cm'))
-
 # university's plans do you prefer
-ggplot(data=subset(df, (!is.na(other_school) & other_school != "Other (please specify)" & other_school != "Don't know enough to say" & other_school != "")), aes(x=factor(other_school))) + 
+ggplot(data=subset(df, (!is.na(other_school) & 
+                          # other_school != "Other (please specify)" & 
+                          other_school != "Don't know enough to say" & other_school != "")), aes(x=factor(other_school))) + 
   geom_bar(aes(fill = factor(other_school))) + 
-  scale_fill_manual(values = c("#B31B1B", "#00693e", "#012169", "#a31f34", "#D41B2C", "#e77500", "#C41E3A", "#00356B")) + 
-  scale_x_discrete(labels = function(x) str_wrap(x, width = 20)) +
-  geom_text(stat='count', aes(label=percent((..count..)/sum((..count..)))), vjust=-1) +
+  scale_fill_manual(values = c("#B31B1B", "#00693e", "#012169", "#a31f34","#D41B2C", primary[5], "#e77500", "#C41E3A", "#00356B")) + 
+  scale_x_discrete(labels = str_wrap(c("Cornell",
+                                       "Dartmouth",
+                                       "Duke",
+                                       "MIT",
+                                       "Northeastern",
+                                       "Princeton",
+                                       "Stanford",
+                                       "Yale",
+                                       "Other"), width = 20), 
+                   limits = c("Cornell",
+                              "Dartmouth",
+                              "Duke",
+                              "MIT",
+                              "Northeastern",
+                              "Princeton",
+                              "Stanford",
+                              "Yale",
+                              "Other (please specify)")) +
+  geom_text(stat='count', aes(label=percent((..count..)/sum((..count..)), 0.1)), vjust=-1) +
   xlab("University") + 
   ylab("Count") + 
   labs(title="Preferred University Fall 2020 Plan") +
@@ -144,7 +164,7 @@ ggplot(data=intlfinaid_ratings , aes(x=group, y=rating_mean)) +
   ylim(c(0, 10)) + 
   xlab("Group") + 
   ylab("Mean rating of Fall 2020 Plan") + 
-  labs(title="Rating of Plan by Intl, Fin Aid Status") +
+  labs(title="Rating of Plan by Int'l, Fin Aid Status") +
   theme_hodp() +
   theme(legend.position = "none")
 grid::grid.raster(logo, x = 0.01, y = 0.01, just = c('left', 'bottom'), width = unit(1.5, 'cm'))
@@ -181,6 +201,7 @@ ggplot(data=finaid_data, aes(x=finaid_ops, y = finaid_op)) +
   geom_text(aes(label=percent(finaid_op / nrow(finaidf))), vjust = -1.5) +
   xlab("Opinion") + 
   ylab("Count") + 
+  ylim(0, 900) +
   labs(title="Financial Aid Policy Opinions") +
   theme_hodp() +
   theme(legend.position = "none")
@@ -247,7 +268,7 @@ set.seed(1234)
 wordcloud(words = d$word, freq = d$freq, min.freq = 10,
           max.words=200, random.order=FALSE, rot.per=0.35, 
           colors=brewer.pal(8, "Dark2"))
-
+grid::grid.raster(logo, x = 0.01, y = 0.01, just = c('left', 'bottom'), width = unit(1.5, 'cm'))
 
 # sentiment analysis
 
