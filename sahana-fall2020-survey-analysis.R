@@ -252,7 +252,7 @@ dfCorpus <- tm_map(dfCorpus, removeNumbers)
 dfCorpus <- tm_map(dfCorpus, removePunctuation)
 # Remove your own stop word
 # specify your stopwords as a character vector
-dfCorpus <- tm_map(dfCorpus, removeWords, c("harvard", "student", "students", "'s", "'ve", "also", "'m", "'re", "many", "though", "one", "can", "seem", "will","think", "will", "plan", "like", "make", "person"))
+dfCorpus <- tm_map(dfCorpus, removeWords, c("harvard", "student", "students", "’s", "’ve", "also", "’m", "’re", "many", "though", "one", "can", "seem", "will","think", "will", "plan", "like", "make", "person", "since", "etc", "done", "keep", "things", "just", "however", "still", "may", "seems", "even", "put"))
 # Remove english common stopwords
 dfCorpus <- tm_map(dfCorpus, removeWords, stopwords("english"))
 # Eliminate extra white spaces
