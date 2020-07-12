@@ -43,3 +43,7 @@ vignettes/*.pdf
 
 *.png
 .DS_Store
+
+!survey-data-public.csv
+
+
