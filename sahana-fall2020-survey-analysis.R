@@ -146,11 +146,53 @@ ggplot(data=subset(df, (!is.na(other_school) & other_school != "Other (please sp
   theme(legend.position = "none")
 grid::grid.raster(logo, x = 0.01, y = 0.01, just = c('left', 'bottom'), width = unit(1.5, 'cm'))
 
-# sentiment analysis of free text
+# rating by international student status
 
-# breaking down opinion by international students
+intlfinaid_means <- c(mean(df$rating_overall_1[df$international == "Yes"], na.rm = TRUE),
+                      mean(df$rating_overall_1[df$international == "No"], na.rm = TRUE),
+                      mean(df$rating_overall_1[df$financial_aid == "Yes"], na.rm = TRUE),
+                      mean(df$rating_overall_1[df$financial_aid == "No"], na.rm = TRUE))
 
-# breaking down opinions by financial aid
+intlfinaid_se <- c(se(filter_nas(df$rating_overall_1[df$international == "Yes"])),
+                      se(filter_nas(df$rating_overall_1[df$international == "No"])),
+                      se(filter_nas(df$rating_overall_1[df$financial_aid == "Yes"])),
+                      se(filter_nas(df$rating_overall_1[df$financial_aid == "No"])))
+
+
+intlfinaidstatus <- c("International student", "Not international", "On financial aid", "Not on financial aid")
+
+intlfinaid_ratings <- data.frame(
+  "group"=factor(intlfinaidstatus),
+  "rating_mean"=intlfinaid_means,
+  "rating_se"=intlfinaid_se
+)
+
+# average decision rating by finaid / intl status
+ggplot(data=intlfinaid_ratings , aes(x=group, y=rating_mean)) + 
+  geom_bar(stat = "identity", aes(fill=group)) +
+  scale_fill_manual(values = c(primary[1], primary[4], primary[2], primary[3])) + 
+  scale_x_discrete(labels = function(x) str_wrap(x, width = 10), 
+                   limits = intlfinaidstatus) +
+  geom_text(stat='identity', aes(label=round(rating_mean, digits=2)), vjust=-2.3) +
+  geom_errorbar(aes(ymin=rating_mean - 1.96 * rating_se, ymax=rating_mean + 1.96 * rating_se),
+                width=.2,                    # Width of the error bars
+                position=position_dodge(0.9)) +
+  ylim(c(0, 10)) + 
+  xlab("Group") + 
+  ylab("Mean rating of Fall 2020 Plan") + 
+  labs(title="Rating of Plan by Intl, Fin Aid Status") +
+  theme_hodp() +
+  theme(legend.position = "none")
+grid::grid.raster(logo, x = 0.01, y = 0.01, just = c('left', 'bottom'), width = unit(1.5, 'cm'))
+
+# breaking down enrollment by financial aid
+table(df$enroll[df$financial_aid == "Yes"]) / nrow(df[df$financial_aid == "Yes", ])
+table(df$enroll[df$financial_aid == "No"]) / nrow(df[df$financial_aid == "No", ])
+
+# breaking down enrollment by international students
+table(df$enroll[df$international == "Yes"]) / nrow(df[df$international == "Yes", ])
+table(df$enroll[df$international == "No"]) / nrow(df[df$international == "No", ])
+
 
 # financial aid question support_financial_ai
 nrow(df)
@@ -210,5 +252,6 @@ grid::grid.raster(logo, x = 0.01, y = 0.01, just = c('left', 'bottom'), width = 
 
 # most frequent words and word cloud of free text
 
+# sentiment analysis
 
   
