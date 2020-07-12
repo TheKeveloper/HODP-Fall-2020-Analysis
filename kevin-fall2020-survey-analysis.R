@@ -17,21 +17,20 @@ likelihoods <- c("Extremely likely", "Somewhat likely", "Somewhat unlikely", "Ex
 ####################
 
 # Basic bar chart of whether students are enrolling
-ggplot(data=subset(df, (!is.na(enroll) & enroll != "")), aes(x=factor(enroll))) + 
-  geom_bar(aes(fill = factor(enroll))) + 
-  scale_fill_manual(values = c(primary[1], primary[4], primary[2], primary[3])) + 
-  scale_x_discrete(labels = function(x) str_wrap(x, width = 10), 
-                   limits = c("Extremely likely", "Somewhat likely", "Somewhat unlikely", "Extremely unlikely")) +
-  geom_text(stat='count', aes(label=percent((..count..)/sum((..count..)))), vjust=-1) +
-  xlab("Likelihood of enrolling for Fall 2020") + 
-  ylab("Count") + 
-  labs(title="Are students enrolling in the Fall?") +
-  theme_hodp() +
-  theme(legend.position = "none")
-grid::grid.raster(logo, x = 0.01, y = 0.01, just = c('left', 'bottom'), width = unit(1.5, 'cm'))
+# ggplot(data=subset(df, (!is.na(enroll) & enroll != "")), aes(x=factor(enroll))) + 
+#   geom_bar(aes(fill = factor(enroll))) + 
+#   scale_fill_manual(values = c(primary[1], primary[4], primary[2], primary[3])) + 
+#   scale_x_discrete(labels = function(x) str_wrap(x, width = 10), 
+#                    limits = c("Extremely likely", "Somewhat likely", "Somewhat unlikely", "Extremely unlikely")) +
+#   geom_text(stat='count', aes(label=percent((..count..)/sum((..count..)))), vjust=-1) +
+#   xlab("Likelihood of enrolling for Fall 2020") + 
+#   ylab("Count") + 
+#   labs(title="Are students enrolling in the Fall?") +
+#   theme_hodp() +
+#   theme(legend.position = "none")
+# grid::grid.raster(logo, x = 0.01, y = 0.01, just = c('left', 'bottom'), width = unit(1.5, 'cm'))
 
 # Students enrolling by class year
-## would someone like to take a shot at labeling this?
 
 enroll_df <- data.frame(
   enroll=rep(likelihoods, 5),
@@ -58,9 +57,9 @@ ggplot(enroll_df, aes(x = factor(year, levels = c("Overall", "2024", "2023", "20
   scale_x_discrete(labels = function(x) str_wrap(x, width = 10)) +
   scale_fill_manual(values = c(primary[5], primary[3], primary[2], primary[1]), guide = guide_legend(reverse = T)) +
   theme_hodp() + 
-  xlab("Likelihood of returning") + 
+  xlab("Year") + 
   ylab("Proportion returning") + 
-  labs(title="Students returning by year", fill = "Class Year")
+  labs(title="Students returning by year", fill = "Likelihood of enrolling")
 grid::grid.raster(logo, x = 0.01, y = 0.01, just = c('left', 'bottom'), width = unit(1.5, 'cm'))
 
 # Simulating the enrollment
@@ -175,6 +174,36 @@ ggplot(data=enroll_means_df, aes(x=enroll_label, y=enroll_mean_2)) +
   theme_hodp() +
   theme(legend.position = "none")
 grid::grid.raster(logo, x = 0.01, y = 0.01, just = c('left', 'bottom'), width = unit(1.5, 'cm'))
+
+groups_enroll_df <- data.frame(
+  enroll=rep(likelihoods, 3),
+  category=rep(c("Overall", "Financial Aid", "International"), 4),
+  prop=rep(0, 12)
+)
+for (row in 1:nrow(groups_enroll_df)) {
+  current_enroll <- groups_enroll_df[row, "enroll"]
+  current_category <- groups_enroll_df[row, "category"]
+  current_label <- tolower(str_replace(current_category, " ", "_" ))
+  if(current_category == "Overall") {
+    groups_enroll_df[row, "prop"] <- sum(df$enroll == current_enroll) / sum(df$enroll != "")
+  }
+  else{
+    groups_enroll_df[row, "prop"] <- sum(df[current_label] == "Yes" & df$enroll == current_enroll) / sum(df[current_label] == "Yes" & df$enroll != "")
+  }
+}
+
+ggplot(groups_enroll_df, aes(x = factor(category, levels = c("Overall", "Financial Aid", "International")), 
+                      y = prop, 
+                      fill = factor(enroll, levels = rev(likelihoods)), 
+                      label = percent(prop))) +
+  geom_bar(stat = "identity") +
+  geom_text(size = 3, position = position_stack(vjust = 0.5)) + 
+  scale_x_discrete(labels = function(x) str_wrap(x, width = 10)) +
+  scale_fill_manual(values = c(primary[5], primary[3], primary[2], primary[1]), guide = guide_legend(reverse = T)) +
+  theme_hodp() + 
+  xlab("Status") + 
+  ylab("Proportion returning") + 
+  labs(title="Enrollment by international and financial aid status", fill = "Likelihood of enrolling")
 
 # How many semesters will people take off
 ggplot(data=subset(df, (!is.na(semesters_off) & semesters_off != "")), aes(x=factor(semesters_off))) + 
