@@ -512,4 +512,40 @@ ggplot(concerns_df, aes(x=factor(concern, levels=rev(concern_options)), y=prop,
         axis.text.y =element_text(size=10,  family="Helvetica"))
 # plot.title = element_text(size=20,  family="Helvetica", face = "bold", margin = margin(t = 0, r = 0, b = 10, l = 0)))
 grid::grid.raster(logo, x = 0.01, y = 0.01, just = c('left', 'bottom'), width = unit(1.5, 'cm'))
+
+# sentiment analysis
+# SA scores by Asher Noel
+df_SA <- read.csv("survey-data-SA.csv")
+df_SA$sign <- sign(df_SA$SA)
+sign_df <- data.frame(
+  sign=rep(c("Negative", "Positive"), 5),
+  year=rep(c("Overall", "2024", "2023", "2022", "2021"), 2),
+  prop=rep(0, 10)
+)
+for (row in 1:nrow(sign_df)) {
+  current_sign <- sign_df[row, "sign"]
+  current_label <- if (current_sign == "Positive") 1 else -1
+  current_year <- sign_df[row, "year"]
+  if(current_year == "Overall") {
+    sign_df[row, "prop"] <- sum(df_SA$sign == current_label) / sum(df_SA$sign != 0)
+  }
+  else{
+    sign_df[row, "prop"] <- sum(df_SA$year == current_year & df_SA$sign == current_label) / sum(df_SA$year==current_year & df_SA$sign != 0)
+  }
+}
+
+ggplot(sign_df, aes(x = factor(year, levels = c("Overall", "2024", "2023", "2022", "2021")), 
+                      y = prop, 
+                      fill = factor(sign, levels = c("Positive", "Negative")), 
+                      label = percent(prop, accuracy=1))) +
+  geom_bar(stat = "identity") +
+  geom_text(size = 4, position = position_stack(vjust = 0.5)) + 
+  scale_x_discrete(labels = function(x) str_wrap(x, width = 10)) +
+  scale_fill_manual(values = c(primary[3], primary[1]), guide = guide_legend(reverse = T)) +
+  theme_hodp() + 
+  xlab("Year") + 
+  ylab("Proportion") + 
+  labs(title="Sentiment by year", fill = "Sentiment")
+grid::grid.raster(logo, x = 0.01, y = 0.01, just = c('left', 'bottom'), width = unit(1.5, 'cm'))
+
   

@@ -50,11 +50,11 @@ ratings <- data.frame(
 )
 
 # average decision rating by year
-ggplot(data=ratings, aes(x=years, y=rating_mean)) + 
+ggplot(data=ratings, aes(x=factor(years), y=rating_mean)) + 
   geom_bar(stat = "identity", aes(fill=years)) +
-  scale_fill_manual(values = c(primary[1], primary[4], primary[2], primary[3])) + 
+  scale_fill_manual(values = c(primary[4], primary[3], primary[2], primary[1])) + 
   scale_x_discrete(labels = function(x) str_wrap(x, width = 10), 
-                   limits = classyears) +
+                   limits = rev(classyears)) +
   geom_text(stat='identity', aes(label=round(rating_mean, digits=2)), vjust=-2.3) +
   geom_errorbar(aes(ymin=rating_mean - rating_se, ymax=rating_mean + rating_se),
                 width=.2,                    # Width of the error bars
@@ -87,7 +87,8 @@ grid::grid.raster(logo, x = 0.01, y = 0.01, just = c('left', 'bottom'), width = 
 opinions <- c("Allows too few students back on campus", "Just right", "Number is just right, but it should be a different cohort in the Fall", "Allows too many students back on campus", "Don't know enough to say")
 opinions
 ggplot(data=subset(df, (!is.na(opinion_eligibility) & opinion_eligibility != " " & opinion_eligibility != "" & opinion_eligibility != "NA" &  
-                          opinion_eligibility != "Don't know enough to say" & year != "Other" & year != "" & !is.na(year))), aes(x=factor(year))) + 
+                          opinion_eligibility != "Don't know enough to say" & year != "Other" & year != "" & !is.na(year))), 
+                            aes(x=factor(year, levels = c("2024", "2023", "2022", "2021")))) + 
   geom_bar(aes(fill = factor(opinion_eligibility, levels = rev(opinions)), y = ..count../tapply(..count.., ..x.. ,sum)[..x..])) + 
   scale_x_discrete(labels = function(x) str_wrap(x, width = 10)) +
   scale_fill_manual(values = rev(primary[1:4])) +
@@ -271,5 +272,4 @@ wordcloud(words = d$word, freq = d$freq, min.freq = 10,
 grid::grid.raster(logo, x = 0.01, y = 0.01, just = c('left', 'bottom'), width = unit(1.5, 'cm'))
 
 # sentiment analysis
-
   
