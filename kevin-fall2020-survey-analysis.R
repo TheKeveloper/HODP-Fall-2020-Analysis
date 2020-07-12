@@ -221,10 +221,9 @@ criteria_labels <- c(
 
 criteria_options <- paste("criteria_", 1:10, sep = "")
 
-criteria_df <-data.frame("criteria" = rep(criteria_options, times=2), 
-                         "satisfied" = c(rep("No", times=length(criteria_options)),
-                                        rep("Yes", times=length(criteria_options))),
-                         "prop" = rep(0, times=2*length(criteria_options)))
+criteria_df <-data.frame("criteria" = criteria_options, 
+                         "satisfied" = rep("Yes", times=length(criteria_options)),
+                         "prop" = rep(0, times=length(criteria_options)))
 
 for (row in 1:nrow(criteria_df)) {
   current_criteria <- criteria_df[row, "criteria"]
@@ -234,17 +233,17 @@ for (row in 1:nrow(criteria_df)) {
   criteria_df[row, "prop"] <- criteria_df[row, "count"] / length(v[!is.na(v) & v != "" & v != "Unsure or prefer not to say"])
 }
 
-ggplot(criteria_df, aes(x=factor(criteria, levels=rev(criteria_options)), y=prop, fill=factor(satisfied, levels=c("No", "Yes", "Unsure or prefer not to say")))) +
+ggplot(criteria_df, aes(x=factor(criteria, levels=rev(criteria_options)), y=prop, fill=factor(satisfied))) +
   geom_bar(stat="identity") +
   xlab('') +
-  ylab('Percent') +
+  ylab('Percent Yes') +
   ggtitle("Which criteria do students satisfy") +
   scale_x_discrete(labels=str_wrap(rev(criteria_labels), width=30)) +
-  scale_fill_manual(values=primary[1:2]) +
-  guides(fill = guide_legend(reverse = TRUE)) +
+  scale_fill_manual(values=primary[1]) +
   coord_flip() +
-  geom_text(aes(label=scales::percent(prop, accuracy=1)), position="stack", hjust=-0.1, size=4) +
+  geom_text(aes(label=percent(prop, accuracy=1)), hjust = -0.25) +
   theme_hodp() +
+  theme(legend.position = "none") +
   theme(legend.title = element_blank(), 
        axis.text.y =element_text(size=10,  family="Helvetica"))
        # plot.title = element_text(size=20,  family="Helvetica", face = "bold", margin = margin(t = 0, r = 0, b = 10, l = 0)))
