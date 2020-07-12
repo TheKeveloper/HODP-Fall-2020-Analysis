@@ -32,12 +32,33 @@ grid::grid.raster(logo, x = 0.01, y = 0.01, just = c('left', 'bottom'), width = 
 
 # Students enrolling by class year
 ## would someone like to take a shot at labeling this?
-ggplot(data=subset(df, (!is.na(enroll) & enroll != "" & year != "Other" & year != "" & !is.na(year))), aes(x=factor(year))) + 
-  geom_bar(aes(fill = factor(enroll, levels = likelihoods), y = ..count../tapply(..count.., ..x.. ,sum)[..x..])) + 
+
+enroll_df <- data.frame(
+  enroll=rep(likelihoods, 5),
+  year=rep(c("Overall", "2024", "2023", "2022", "2021"), 4),
+  prop=rep(0, 20)
+)
+for (row in 1:nrow(enroll_df)) {
+  current_enroll <- enroll_df[row, "enroll"]
+  current_year <- enroll_df[row, "year"]
+  if(current_year == "Overall") {
+    enroll_df[row, "prop"] <- sum(df$enroll == current_enroll) / sum(df$enroll != "")
+  }
+  else{
+    enroll_df[row, "prop"] <- sum(df$year == current_year & df$enroll == current_enroll) / sum(df$year==current_year & df$enroll != "")
+  }
+}
+
+ggplot(enroll_df, aes(x = factor(year, levels = c("Overall", "2024", "2023", "2022", "2021")), 
+                                 y = prop, 
+                                fill = factor(enroll, levels = rev(likelihoods)), 
+                                    label = percent(prop))) +
+  geom_bar(stat = "identity") +
+  geom_text(size = 3, position = position_stack(vjust = 0.5)) + 
   scale_x_discrete(labels = function(x) str_wrap(x, width = 10)) +
-  scale_fill_manual(values = primary) +
+  scale_fill_manual(values = c(primary[5], primary[3], primary[2], primary[1]), guide = guide_legend(reverse = T)) +
   theme_hodp() + 
-  xlab("Class Year") + 
+  xlab("Likelihood of returning") + 
   ylab("Proportion returning") + 
   labs(title="Students returning by year", fill = "Class Year")
 grid::grid.raster(logo, x = 0.01, y = 0.01, just = c('left', 'bottom'), width = unit(1.5, 'cm'))
